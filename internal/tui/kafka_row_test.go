@@ -32,7 +32,7 @@ func TestKafkaConsumerRow(t *testing.T) {
 			},
 			want: []string{
 				"kafka_in.events_queue", "consumer-1",
-				"12.35M", "1.23K", "5s ago", "ok",
+				"12.35M", "1.23K", "5.0s ago", "ok",
 			},
 		},
 		{
