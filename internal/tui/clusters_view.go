@@ -69,7 +69,7 @@ func clustersColumns(width int) []table.Column {
 }
 
 func (v *ClustersView) Init() tea.Cmd {
-	return tea.Batch(v.load(), v.tick())
+	return v.load()
 }
 
 func (v *ClustersView) Update(msg tea.Msg) tea.Cmd {
@@ -86,7 +86,7 @@ func (v *ClustersView) Update(msg tea.Msg) tea.Cmd {
 		if v.app.current != viewClusters || v.errored {
 			return nil
 		}
-		return tea.Batch(v.load(), v.tick())
+		return v.load()
 	case tea.KeyMsg:
 		if m.String() == "r" {
 			v.errored = false

@@ -66,7 +66,7 @@ func tablesColumns(width int) []table.Column {
 }
 
 func (v *TablesView) Init() tea.Cmd {
-	return tea.Batch(v.load(), v.tick())
+	return v.load()
 }
 
 func (v *TablesView) Update(msg tea.Msg) tea.Cmd {
@@ -83,7 +83,7 @@ func (v *TablesView) Update(msg tea.Msg) tea.Cmd {
 		if v.app.current != viewTables || v.errored {
 			return nil
 		}
-		return tea.Batch(v.load(), v.tick())
+		return v.load()
 	case tea.KeyMsg:
 		if consumed, applied := v.filter.Handle(m); consumed {
 			if applied {

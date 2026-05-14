@@ -68,7 +68,7 @@ func mergesColumns(width int) []table.Column {
 }
 
 func (v *MergesView) Init() tea.Cmd {
-	return tea.Batch(v.load(), v.tick())
+	return v.load()
 }
 
 func (v *MergesView) Update(msg tea.Msg) tea.Cmd {
@@ -85,7 +85,7 @@ func (v *MergesView) Update(msg tea.Msg) tea.Cmd {
 		if v.app.current != viewMerges || v.errored {
 			return nil
 		}
-		return tea.Batch(v.load(), v.tick())
+		return v.load()
 	case tea.KeyMsg:
 		if m.String() == "r" {
 			v.errored = false

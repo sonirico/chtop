@@ -66,7 +66,7 @@ func processesColumns(width int) []table.Column {
 }
 
 func (v *ProcessesView) Init() tea.Cmd {
-	return tea.Batch(v.load(), v.tick())
+	return v.load()
 }
 
 func (v *ProcessesView) Update(msg tea.Msg) tea.Cmd {
@@ -87,7 +87,7 @@ func (v *ProcessesView) Update(msg tea.Msg) tea.Cmd {
 		if v.app.current != viewProcesses || v.errored {
 			return nil
 		}
-		return tea.Batch(v.load(), v.tick())
+		return v.load()
 	case tea.KeyMsg:
 		if v.confirming {
 			switch m.String() {
