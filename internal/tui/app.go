@@ -18,6 +18,7 @@ const (
 	viewProcesses
 	viewClusters
 	viewReplicas
+	viewMerges
 	viewHelp
 )
 
@@ -44,6 +45,7 @@ type App struct {
 	processes *ProcessesView
 	clusters  *ClustersView
 	replicas  *ReplicasView
+	merges    *MergesView
 	help      *HelpView
 
 	cmdMode   bool
@@ -68,6 +70,7 @@ func NewApp(cfg AppConfig) (*App, error) {
 	a.processes = newProcessesView(a)
 	a.clusters = newClustersView(a)
 	a.replicas = newReplicasView(a)
+	a.merges = newMergesView(a)
 	a.help = newHelpView(a)
 	return a, nil
 }
@@ -107,6 +110,8 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return a, a.clusters.Update(msg)
 	case viewReplicas:
 		return a, a.replicas.Update(msg)
+	case viewMerges:
+		return a, a.merges.Update(msg)
 	case viewHelp:
 		return a, a.help.Update(msg)
 	}
@@ -124,6 +129,8 @@ func (a *App) View() string {
 		body = a.clusters.View()
 	case viewReplicas:
 		body = a.replicas.View()
+	case viewMerges:
+		body = a.merges.View()
 	case viewHelp:
 		body = a.help.View()
 	}
@@ -148,6 +155,7 @@ func (a *App) resizeViews() {
 	a.processes.SetSize(w, h)
 	a.clusters.SetSize(w, h)
 	a.replicas.SetSize(w, h)
+	a.merges.SetSize(w, h)
 	a.help.SetSize(w, h)
 }
 
@@ -176,7 +184,7 @@ func (a *App) handleKey(k tea.KeyMsg) (tea.Cmd, bool) {
 		switch a.current {
 		case viewHelp:
 			return a.switchView(a.prev), true
-		case viewProcesses, viewClusters, viewReplicas:
+		case viewProcesses, viewClusters, viewReplicas, viewMerges:
 			return a.switchView(viewTables), true
 		}
 	}
@@ -223,6 +231,8 @@ func (a *App) runCommand(cmd string) tea.Cmd {
 		return a.switchView(viewClusters)
 	case "replicas", "R":
 		return a.switchView(viewReplicas)
+	case "merges", "m":
+		return a.switchView(viewMerges)
 	case "help", "?", "h":
 		return a.toggleHelp()
 	case "quit", "q":
@@ -246,6 +256,8 @@ func (a *App) switchView(v viewID) tea.Cmd {
 		return a.clusters.Init()
 	case viewReplicas:
 		return a.replicas.Init()
+	case viewMerges:
+		return a.merges.Init()
 	case viewHelp:
 		return a.help.Init()
 	}
@@ -287,6 +299,8 @@ func viewName(v viewID) string {
 		return "clusters"
 	case viewReplicas:
 		return "replicas"
+	case viewMerges:
+		return "merges"
 	case viewHelp:
 		return "help"
 	}

@@ -14,6 +14,7 @@ type dataLoader interface {
 	Processes(ctx context.Context) ([]ch.Process, error)
 	KillQuery(ctx context.Context, queryID string) error
 	Replicas(ctx context.Context) ([]ch.ReplicaStatus, error)
+	Merges(ctx context.Context) ([]ch.MergeInfo, error)
 	Ping(ctx context.Context) error
 	Close()
 }

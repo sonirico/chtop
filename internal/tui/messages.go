@@ -18,6 +18,10 @@ type replicasLoadedMsg struct {
 	replicas []ch.ReplicaStatus
 }
 
+type mergesLoadedMsg struct {
+	merges []ch.MergeInfo
+}
+
 type killDoneMsg struct {
 	queryID string
 	err     error

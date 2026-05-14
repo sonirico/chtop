@@ -46,10 +46,11 @@ func tablesColumns(width int) []table.Column {
 		engineW = 22
 		rowsW   = 10
 		sizeW   = 12
+		comprW  = 7
 		partsW  = 7
 		gutter  = 2
 	)
-	fixed := engineW + rowsW + sizeW + partsW + gutter*5
+	fixed := engineW + rowsW + sizeW + comprW + partsW + gutter*6
 	nameW := width - fixed
 	if nameW < 20 {
 		nameW = 20
@@ -59,6 +60,7 @@ func tablesColumns(width int) []table.Column {
 		{Title: "ENGINE", Width: engineW},
 		{Title: "ROWS", Width: rowsW},
 		{Title: "SIZE", Width: sizeW},
+		{Title: "COMPR", Width: comprW},
 		{Title: "PARTS", Width: partsW},
 	}
 }
@@ -149,11 +151,17 @@ func (v *TablesView) tick() tea.Cmd {
 func tablesToRows(ts []ch.TableInfo) []table.Row {
 	rows := make([]table.Row, 0, len(ts))
 	for _, t := range ts {
+		ratio := "-"
+		if r := t.CompressionRatio(); r > 0 {
+			// Show inverse (e.g. 5.0x means data shrinks 5x on disk).
+			ratio = fmt.Sprintf("%.1fx", 1/r)
+		}
 		rows = append(rows, table.Row{
 			t.Database + "." + t.Name,
 			t.Engine,
 			humanCount(t.TotalRows),
 			humanBytes(int64(t.TotalBytes)),
+			ratio,
 			fmt.Sprintf("%d", t.PartCount),
 		})
 	}
