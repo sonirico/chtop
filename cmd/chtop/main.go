@@ -27,12 +27,15 @@ func run() error {
 	}
 
 	client, err := ch.NewClient(ch.Config{
-		Host:     cfg.host,
-		Port:     cfg.port,
-		User:     cfg.user,
-		Password: cfg.password,
-		Database: cfg.database,
-		TLS:      cfg.tls,
+		Host:        cfg.host,
+		Port:        cfg.port,
+		User:        cfg.user,
+		Password:    cfg.password,
+		Database:    cfg.database,
+		TLS:         cfg.tls,
+		TLSCertFile: cfg.tlsCert,
+		TLSKeyFile:  cfg.tlsKey,
+		TLSCAFile:   cfg.tlsCA,
 	})
 	if err != nil {
 		return err
@@ -64,6 +67,9 @@ type cliConfig struct {
 	password string
 	database string
 	tls      bool
+	tlsCert  string
+	tlsKey   string
+	tlsCA    string
 }
 
 func parseFlags() (cliConfig, error) {
@@ -94,6 +100,24 @@ func parseFlags() (cliConfig, error) {
 		"ClickHouse default database (env: CHTOP_DATABASE)",
 	)
 	flag.BoolVar(&c.tls, "tls", c.tls, "use TLS (default port becomes 9440)")
+	flag.StringVar(
+		&c.tlsCert,
+		"tls-cert",
+		envOr("CHTOP_TLS_CERT", ""),
+		"path to client certificate PEM for mTLS",
+	)
+	flag.StringVar(
+		&c.tlsKey,
+		"tls-key",
+		envOr("CHTOP_TLS_KEY", ""),
+		"path to client private key PEM for mTLS",
+	)
+	flag.StringVar(
+		&c.tlsCA,
+		"tls-ca",
+		envOr("CHTOP_TLS_CA", ""),
+		"path to a custom CA bundle PEM (default: system roots)",
+	)
 	flag.Parse()
 	return c, nil
 }

@@ -6,7 +6,6 @@ package ch
 import (
 	"context"
 	"crypto/rand"
-	"crypto/tls"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -33,6 +32,12 @@ type Config struct {
 	Password string
 	Database string
 	TLS      bool
+
+	// mTLS files. TLSCAFile sets a custom Root CA; TLSCertFile + TLSKeyFile
+	// together enable client certificate authentication.
+	TLSCertFile string
+	TLSKeyFile  string
+	TLSCAFile   string
 
 	DialTimeout time.Duration
 	ReadTimeout time.Duration
@@ -74,8 +79,12 @@ func NewClient(cfg Config) (*Client, error) {
 			"max_execution_time": 30,
 		},
 	}
-	if cfg.TLS {
-		opts.TLS = &tls.Config{}
+	tlsCfg, err := buildTLSConfig(cfg)
+	if err != nil {
+		return nil, fmt.Errorf("tls: %w", err)
+	}
+	if tlsCfg != nil {
+		opts.TLS = tlsCfg
 	}
 	conn, err := clickhouse.Open(opts)
 	if err != nil {
