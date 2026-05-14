@@ -25,7 +25,7 @@ type ClusterReplica struct {
 // Clusters lists every row in system.clusters across all configured
 // clusters. Sort is by cluster name, shard, replica.
 func (c *Client) Clusters(ctx context.Context) ([]ClusterReplica, error) {
-	rows, err := c.conn.Query(ctx, `
+	rows, err := c.conn.Query(c.tagged(ctx), `
 		SELECT
 			cluster, shard_num, shard_weight, replica_num,
 			host_name, host_address, port, is_local,

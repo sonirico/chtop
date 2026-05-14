@@ -46,7 +46,7 @@ func (c *Client) ListTables(ctx context.Context, includeSystem bool) ([]TableInf
 	}
 	query += " ORDER BY t.database, t.name"
 
-	rows, err := c.conn.Query(ctx, query)
+	rows, err := c.conn.Query(c.tagged(ctx), query)
 	if err != nil {
 		return nil, fmt.Errorf("query system.tables: %w", err)
 	}

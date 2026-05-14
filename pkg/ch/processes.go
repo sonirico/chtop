@@ -26,14 +26,16 @@ type Process struct {
 // Processes returns the currently running queries. Sort is by elapsed time
 // desc so the worst offenders are on top.
 func (c *Client) Processes(ctx context.Context) ([]Process, error) {
-	rows, err := c.conn.Query(ctx, `
+	// Filter out our own polling queries so the view doesn't churn on itself.
+	rows, err := c.conn.Query(c.tagged(ctx), `
 		SELECT
 			query_id, user, client_hostname, initial_user, address,
 			elapsed, read_rows, read_bytes, total_rows_approx,
 			memory_usage, peak_memory_usage, query
 		FROM system.processes
+		WHERE query_id NOT LIKE concat($1, '%')
 		ORDER BY elapsed DESC
-	`)
+	`, QueryIDPrefix)
 	if err != nil {
 		return nil, fmt.Errorf("query system.processes: %w", err)
 	}
@@ -63,7 +65,7 @@ func (c *Client) Processes(ctx context.Context) ([]Process, error) {
 // returns. Returns nil if the query id is no longer running.
 func (c *Client) KillQuery(ctx context.Context, queryID string) error {
 	q := fmt.Sprintf("KILL QUERY WHERE query_id = '%s' SYNC", escapeSingleQuotes(queryID))
-	if err := c.conn.Exec(ctx, q); err != nil {
+	if err := c.conn.Exec(c.tagged(ctx), q); err != nil {
 		return fmt.Errorf("kill query: %w", err)
 	}
 	return nil

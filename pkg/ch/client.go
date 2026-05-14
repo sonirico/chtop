@@ -5,7 +5,9 @@ package ch
 
 import (
 	"context"
+	"crypto/rand"
 	"crypto/tls"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"time"
@@ -13,6 +15,11 @@ import (
 	"github.com/ClickHouse/clickhouse-go/v2"
 	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
 )
+
+// QueryIDPrefix tags every query chtop issues so the processes / query_log
+// views can hide their own traffic. Public so the SQL queries here and any
+// later view can reference the same constant.
+const QueryIDPrefix = "chtop-"
 
 // ErrConfig is returned when a required Config field is missing.
 var ErrConfig = errors.New("missing required config")
@@ -90,4 +97,13 @@ func (c *Client) Close() {
 	if c.conn != nil {
 		_ = c.conn.Close()
 	}
+}
+
+// tagged returns ctx wrapped with a per-call query_id prefixed by
+// QueryIDPrefix. Used by every query method on Client so we can filter our
+// own traffic out of system.processes and system.query_log.
+func (c *Client) tagged(ctx context.Context) context.Context {
+	var b [8]byte
+	_, _ = rand.Read(b[:])
+	return clickhouse.Context(ctx, clickhouse.WithQueryID(QueryIDPrefix+hex.EncodeToString(b[:])))
 }

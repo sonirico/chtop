@@ -29,7 +29,7 @@ type ReplicaStatus struct {
 
 // Replicas returns one row per replicated table on this replica.
 func (c *Client) Replicas(ctx context.Context) ([]ReplicaStatus, error) {
-	rows, err := c.conn.Query(ctx, `
+	rows, err := c.conn.Query(c.tagged(ctx), `
 		SELECT
 			database, table, is_leader, is_readonly, is_session_expired,
 			future_parts, parts_to_check, queue_size, inserts_in_queue,
