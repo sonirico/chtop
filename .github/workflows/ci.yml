@@ -30,9 +30,13 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
+      # install-mode: goinstall builds golangci-lint with the runner's Go,
+      # avoiding the "language version of binary lower than targeted Go" gate
+      # that triggers on Go 1.26+ projects with v6's pre-built binary.
       - uses: golangci/golangci-lint-action@v6
         with:
           version: latest
+          install-mode: goinstall
 
   test:
     name: go test
