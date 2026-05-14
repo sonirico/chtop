@@ -55,6 +55,10 @@ type errorsLoadedMsg struct {
 	errors []ch.ErrorInfo
 }
 
+type matviewsLoadedMsg struct {
+	mvs []ch.MaterializedViewInfo
+}
+
 type killDoneMsg struct {
 	queryID string
 	err     error

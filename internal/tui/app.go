@@ -24,6 +24,7 @@ const (
 	viewExplain
 	viewMetrics
 	viewErrors
+	viewMatViews
 	viewHelp
 )
 
@@ -56,6 +57,7 @@ type App struct {
 	explain     *ExplainView
 	metrics     *MetricsView
 	errors      *ErrorsView
+	matviews    *MaterializedViewsView
 	help        *HelpView
 
 	cmdMode   bool
@@ -86,6 +88,7 @@ func NewApp(cfg AppConfig) (*App, error) {
 	a.explain = newExplainView(a)
 	a.metrics = newMetricsView(a)
 	a.errors = newErrorsView(a)
+	a.matviews = newMaterializedViewsView(a)
 	a.help = newHelpView(a)
 	return a, nil
 }
@@ -137,6 +140,8 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return a, a.metrics.Update(msg)
 	case viewErrors:
 		return a, a.errors.Update(msg)
+	case viewMatViews:
+		return a, a.matviews.Update(msg)
 	case viewHelp:
 		return a, a.help.Update(msg)
 	}
@@ -166,6 +171,8 @@ func (a *App) View() string {
 		body = a.metrics.View()
 	case viewErrors:
 		body = a.errors.View()
+	case viewMatViews:
+		body = a.matviews.View()
 	case viewHelp:
 		body = a.help.View()
 	}
@@ -196,6 +203,7 @@ func (a *App) resizeViews() {
 	a.explain.SetSize(w, h)
 	a.metrics.SetSize(w, h)
 	a.errors.SetSize(w, h)
+	a.matviews.SetSize(w, h)
 	a.help.SetSize(w, h)
 }
 
@@ -233,7 +241,8 @@ func (a *App) handleKey(k tea.KeyMsg) (tea.Cmd, bool) {
 			viewTableDetail,
 			viewQueryLog,
 			viewMetrics,
-			viewErrors:
+			viewErrors,
+			viewMatViews:
 			return a.switchView(viewTables), true
 		}
 	}
@@ -288,6 +297,8 @@ func (a *App) runCommand(cmd string) tea.Cmd {
 		return a.switchView(viewMetrics)
 	case "errors", "err":
 		return a.switchView(viewErrors)
+	case "matviews", "mv":
+		return a.switchView(viewMatViews)
 	case "help", "?", "h":
 		return a.toggleHelp()
 	case "quit", "q":
@@ -323,6 +334,8 @@ func (a *App) switchView(v viewID) tea.Cmd {
 		return a.metrics.Init()
 	case viewErrors:
 		return a.errors.Init()
+	case viewMatViews:
+		return a.matviews.Init()
 	case viewHelp:
 		return a.help.Init()
 	}
@@ -376,6 +389,8 @@ func viewName(v viewID) string {
 		return "metrics"
 	case viewErrors:
 		return "errors"
+	case viewMatViews:
+		return "matviews"
 	case viewHelp:
 		return "help"
 	}

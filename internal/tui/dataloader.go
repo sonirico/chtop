@@ -24,6 +24,7 @@ type dataLoader interface {
 	ExplainQueryID(ctx context.Context, queryID string, mode ch.ExplainMode) (string, error)
 	Metrics(ctx context.Context) (ch.MetricsSnapshot, error)
 	Errors(ctx context.Context) ([]ch.ErrorInfo, error)
+	MaterializedViews(ctx context.Context) ([]ch.MaterializedViewInfo, error)
 	Ping(ctx context.Context) error
 	Close()
 }
