@@ -14,7 +14,6 @@ var (
 	colorCursor    = lipgloss.AdaptiveColor{Light: "#DC2626", Dark: "#EF4444"}
 	colorMuted     = lipgloss.AdaptiveColor{Light: "#6B7280", Dark: "#9CA3AF"}
 	colorOK        = lipgloss.AdaptiveColor{Light: "#10B981", Dark: "#34D399"}
-	colorWarn      = lipgloss.AdaptiveColor{Light: "#D97706", Dark: "#F59E0B"}
 	colorErr       = lipgloss.AdaptiveColor{Light: "#DC2626", Dark: "#F87171"}
 	colorBorder    = lipgloss.AdaptiveColor{Light: "#D1D5DB", Dark: "#374151"}
 	colorSelFG     = lipgloss.Color("#FFFFFF")
