@@ -42,6 +42,9 @@ type TableDetailView struct {
 	parts       []ch.PartInfo
 	partsLoaded bool
 
+	mutations       []ch.MutationInfo
+	mutationsLoaded bool
+
 	err error
 
 	tab     detailTab
@@ -82,11 +85,13 @@ func (v *TableDetailView) Init() tea.Cmd {
 	v.columnsLoaded = false
 	v.parts = nil
 	v.partsLoaded = false
+	v.mutations = nil
+	v.mutationsLoaded = false
 	v.err = nil
 	v.tab = tabSchema
 	v.offsets = [detailTabCount]int{}
 	v.refresh()
-	return tea.Batch(v.loadDescribe(), v.loadColumns(), v.loadParts())
+	return tea.Batch(v.loadDescribe(), v.loadColumns(), v.loadParts(), v.loadMutations())
 }
 
 func (v *TableDetailView) Update(msg tea.Msg) tea.Cmd {
@@ -105,6 +110,11 @@ func (v *TableDetailView) Update(msg tea.Msg) tea.Cmd {
 	case partsLoadedMsg:
 		v.parts = m.parts
 		v.partsLoaded = true
+		v.refresh()
+		return nil
+	case tableMutationsLoadedMsg:
+		v.mutations = m.mutations
+		v.mutationsLoaded = true
 		v.refresh()
 		return nil
 	case errorMsg:
@@ -248,8 +258,36 @@ func (v *TableDetailView) renderParts() string {
 }
 
 func (v *TableDetailView) renderMutations() string {
+	if !v.mutationsLoaded {
+		return "\n  loading mutations...\n"
+	}
+	if len(v.mutations) == 0 {
+		muted := lipgloss.NewStyle().Foreground(colorMuted)
+		return "\n  " + muted.Render("no mutations on this table") + "\n"
+	}
 	muted := lipgloss.NewStyle().Foreground(colorMuted)
-	return "\n  " + muted.Render("mutations view coming next iteration") + "\n"
+	var b strings.Builder
+	header := fmt.Sprintf(
+		"  %-12s %-50s %-9s %-20s %-8s %s",
+		"ID", "COMMAND", "STATUS", "CREATED", "PARTS", "FAIL",
+	)
+	b.WriteString(muted.Render(header) + "\n")
+	for _, m := range v.mutations {
+		row := mutationRow(m)
+		cmd := row[1]
+		if len(cmd) > 50 {
+			cmd = cmd[:47] + "..."
+		}
+		fail := row[5]
+		if len(fail) > 60 {
+			fail = fail[:57] + "..."
+		}
+		b.WriteString(fmt.Sprintf(
+			"  %-12s %-50s %-9s %-20s %-8s %s\n",
+			row[0], cmd, row[2], row[3], row[4], fail,
+		))
+	}
+	return b.String()
 }
 
 func (v *TableDetailView) renderEngine() string {
@@ -326,6 +364,20 @@ func (v *TableDetailView) loadParts() tea.Cmd {
 	}
 }
 
+func (v *TableDetailView) loadMutations() tea.Cmd {
+	admin := v.app.client
+	db, t := v.database, v.name
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		ms, err := admin.Mutations(ctx, db, t)
+		if err != nil {
+			return errorMsg{err: fmt.Errorf("mutations %s.%s: %w", db, t, err)}
+		}
+		return tableMutationsLoadedMsg{mutations: ms}
+	}
+}
+
 // columnRow renders a column's row cells for the schema tab. Pure: same
 // input yields the same output, no clock / RNG dependencies.
 func columnRow(c ch.ColumnInfo) []string {
@@ -354,6 +406,25 @@ func columnRow(c ch.ColumnInfo) []string {
 		humanBytes(int64(c.DataCompressed)),
 		ratio,
 		strings.Join(keys, " "),
+	}
+}
+
+// mutationRow renders a mutation row for the Mutations tab. Pure: the command
+// has its newlines collapsed to spaces so it fits on one line. The fail
+// column is empty when there's no failure recorded yet.
+func mutationRow(m ch.MutationInfo) []string {
+	status := "running"
+	if m.IsDone {
+		status = "done"
+	}
+	cmd := strings.ReplaceAll(m.Command, "\n", " ")
+	return []string{
+		m.MutationID,
+		cmd,
+		status,
+		m.CreateTime.UTC().Format("2006-01-02 15:04:05"),
+		fmt.Sprintf("%d", m.PartsToDo),
+		m.LatestFailReason,
 	}
 }
 

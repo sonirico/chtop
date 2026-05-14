@@ -34,6 +34,10 @@ type partsLoadedMsg struct {
 	parts []ch.PartInfo
 }
 
+type tableMutationsLoadedMsg struct {
+	mutations []ch.MutationInfo
+}
+
 type killDoneMsg struct {
 	queryID string
 	err     error

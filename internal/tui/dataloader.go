@@ -18,6 +18,7 @@ type dataLoader interface {
 	DescribeTable(ctx context.Context, database, table string) (ch.TableDescription, error)
 	Columns(ctx context.Context, database, table string) ([]ch.ColumnInfo, error)
 	Parts(ctx context.Context, database, table string) ([]ch.PartInfo, error)
+	Mutations(ctx context.Context, database, table string) ([]ch.MutationInfo, error)
 	Ping(ctx context.Context) error
 	Close()
 }
