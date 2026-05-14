@@ -1,5 +1,7 @@
 # chtop
 
+[![ci](https://github.com/sonirico/chtop/actions/workflows/ci.yml/badge.svg)](https://github.com/sonirico/chtop/actions/workflows/ci.yml)
+
 Terminal UI for ClickHouse. Tables, running queries with kill, replication
 status, cluster topology. Same idea as `htop` but for a ClickHouse cluster.
 
