@@ -72,6 +72,7 @@ func helpContent() string {
 	b.WriteString(row("merges, m", "merges + mutations in flight"))
 	b.WriteString(row("querylog, ql", "recent finished/failed queries"))
 	b.WriteString(row("metrics, met", "live cluster gauges + event rates"))
+	b.WriteString(row("errors, err", "system.errors with growth highlighting"))
 	b.WriteString(row("help, ?", "this help"))
 
 	b.WriteString(section("Query log view"))

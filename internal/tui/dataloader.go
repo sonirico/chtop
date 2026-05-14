@@ -23,6 +23,7 @@ type dataLoader interface {
 	QueryLog(ctx context.Context, since time.Time, limit int) ([]ch.QueryLogInfo, error)
 	ExplainQueryID(ctx context.Context, queryID string, mode ch.ExplainMode) (string, error)
 	Metrics(ctx context.Context) (ch.MetricsSnapshot, error)
+	Errors(ctx context.Context) ([]ch.ErrorInfo, error)
 	Ping(ctx context.Context) error
 	Close()
 }

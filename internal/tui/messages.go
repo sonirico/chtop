@@ -51,6 +51,10 @@ type metricsLoadedMsg struct {
 	snapshot ch.MetricsSnapshot
 }
 
+type errorsLoadedMsg struct {
+	errors []ch.ErrorInfo
+}
+
 type killDoneMsg struct {
 	queryID string
 	err     error

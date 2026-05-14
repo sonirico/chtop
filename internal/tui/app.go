@@ -23,6 +23,7 @@ const (
 	viewQueryLog
 	viewExplain
 	viewMetrics
+	viewErrors
 	viewHelp
 )
 
@@ -54,6 +55,7 @@ type App struct {
 	queryLog    *QueryLogView
 	explain     *ExplainView
 	metrics     *MetricsView
+	errors      *ErrorsView
 	help        *HelpView
 
 	cmdMode   bool
@@ -83,6 +85,7 @@ func NewApp(cfg AppConfig) (*App, error) {
 	a.queryLog = newQueryLogView(a)
 	a.explain = newExplainView(a)
 	a.metrics = newMetricsView(a)
+	a.errors = newErrorsView(a)
 	a.help = newHelpView(a)
 	return a, nil
 }
@@ -132,6 +135,8 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return a, a.explain.Update(msg)
 	case viewMetrics:
 		return a, a.metrics.Update(msg)
+	case viewErrors:
+		return a, a.errors.Update(msg)
 	case viewHelp:
 		return a, a.help.Update(msg)
 	}
@@ -159,6 +164,8 @@ func (a *App) View() string {
 		body = a.explain.View()
 	case viewMetrics:
 		body = a.metrics.View()
+	case viewErrors:
+		body = a.errors.View()
 	case viewHelp:
 		body = a.help.View()
 	}
@@ -188,6 +195,7 @@ func (a *App) resizeViews() {
 	a.queryLog.SetSize(w, h)
 	a.explain.SetSize(w, h)
 	a.metrics.SetSize(w, h)
+	a.errors.SetSize(w, h)
 	a.help.SetSize(w, h)
 }
 
@@ -224,7 +232,8 @@ func (a *App) handleKey(k tea.KeyMsg) (tea.Cmd, bool) {
 			viewMerges,
 			viewTableDetail,
 			viewQueryLog,
-			viewMetrics:
+			viewMetrics,
+			viewErrors:
 			return a.switchView(viewTables), true
 		}
 	}
@@ -277,6 +286,8 @@ func (a *App) runCommand(cmd string) tea.Cmd {
 		return a.switchView(viewQueryLog)
 	case "metrics", "met":
 		return a.switchView(viewMetrics)
+	case "errors", "err":
+		return a.switchView(viewErrors)
 	case "help", "?", "h":
 		return a.toggleHelp()
 	case "quit", "q":
@@ -310,6 +321,8 @@ func (a *App) switchView(v viewID) tea.Cmd {
 		return a.explain.Init()
 	case viewMetrics:
 		return a.metrics.Init()
+	case viewErrors:
+		return a.errors.Init()
 	case viewHelp:
 		return a.help.Init()
 	}
@@ -361,6 +374,8 @@ func viewName(v viewID) string {
 		return "explain"
 	case viewMetrics:
 		return "metrics"
+	case viewErrors:
+		return "errors"
 	case viewHelp:
 		return "help"
 	}
