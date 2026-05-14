@@ -95,6 +95,17 @@ func (v *TablesView) Update(msg tea.Msg) tea.Cmd {
 			v.errored = false
 			return v.load()
 		}
+		if m.String() == "enter" {
+			idx := v.table.Cursor()
+			filtered := v.filtered()
+			if idx >= 0 && idx < len(filtered) {
+				sel := filtered[idx]
+				return func() tea.Msg {
+					v.app.tableDetail.Target(sel.Database, sel.Name)
+					return switchViewMsg{view: viewTableDetail}
+				}
+			}
+		}
 	}
 	var cmd tea.Cmd
 	v.table, cmd = v.table.Update(msg)

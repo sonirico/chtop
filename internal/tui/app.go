@@ -19,6 +19,7 @@ const (
 	viewClusters
 	viewReplicas
 	viewMerges
+	viewTableDetail
 	viewHelp
 )
 
@@ -41,12 +42,13 @@ type App struct {
 	current viewID
 	prev    viewID
 
-	tables    *TablesView
-	processes *ProcessesView
-	clusters  *ClustersView
-	replicas  *ReplicasView
-	merges    *MergesView
-	help      *HelpView
+	tables      *TablesView
+	processes   *ProcessesView
+	clusters    *ClustersView
+	replicas    *ReplicasView
+	merges      *MergesView
+	tableDetail *TableDetailView
+	help        *HelpView
 
 	cmdMode   bool
 	cmdBuf    string
@@ -71,6 +73,7 @@ func NewApp(cfg AppConfig) (*App, error) {
 	a.clusters = newClustersView(a)
 	a.replicas = newReplicasView(a)
 	a.merges = newMergesView(a)
+	a.tableDetail = newTableDetailView(a)
 	a.help = newHelpView(a)
 	return a, nil
 }
@@ -112,6 +115,8 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return a, a.replicas.Update(msg)
 	case viewMerges:
 		return a, a.merges.Update(msg)
+	case viewTableDetail:
+		return a, a.tableDetail.Update(msg)
 	case viewHelp:
 		return a, a.help.Update(msg)
 	}
@@ -131,6 +136,8 @@ func (a *App) View() string {
 		body = a.replicas.View()
 	case viewMerges:
 		body = a.merges.View()
+	case viewTableDetail:
+		body = a.tableDetail.View()
 	case viewHelp:
 		body = a.help.View()
 	}
@@ -156,6 +163,7 @@ func (a *App) resizeViews() {
 	a.clusters.SetSize(w, h)
 	a.replicas.SetSize(w, h)
 	a.merges.SetSize(w, h)
+	a.tableDetail.SetSize(w, h)
 	a.help.SetSize(w, h)
 }
 
@@ -184,7 +192,7 @@ func (a *App) handleKey(k tea.KeyMsg) (tea.Cmd, bool) {
 		switch a.current {
 		case viewHelp:
 			return a.switchView(a.prev), true
-		case viewProcesses, viewClusters, viewReplicas, viewMerges:
+		case viewProcesses, viewClusters, viewReplicas, viewMerges, viewTableDetail:
 			return a.switchView(viewTables), true
 		}
 	}
@@ -258,6 +266,8 @@ func (a *App) switchView(v viewID) tea.Cmd {
 		return a.replicas.Init()
 	case viewMerges:
 		return a.merges.Init()
+	case viewTableDetail:
+		return a.tableDetail.Init()
 	case viewHelp:
 		return a.help.Init()
 	}
@@ -301,6 +311,8 @@ func viewName(v viewID) string {
 		return "replicas"
 	case viewMerges:
 		return "merges"
+	case viewTableDetail:
+		return "table"
 	case viewHelp:
 		return "help"
 	}

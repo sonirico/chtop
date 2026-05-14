@@ -1,0 +1,376 @@
+// Package tui — table detail view.
+package tui
+
+import (
+	"context"
+	"fmt"
+	"strings"
+	"time"
+
+	"github.com/charmbracelet/bubbles/viewport"
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
+	"github.com/sonirico/chtop/pkg/ch"
+)
+
+type detailTab int
+
+const (
+	tabSchema detailTab = iota
+	tabParts
+	tabMutations
+	tabEngine
+)
+
+const detailTabCount = 4
+
+// TableDetailView is the per-table drill-down: schema, parts, mutations,
+// engine info. Five sections of the kind a DBA wants in one screen.
+type TableDetailView struct {
+	app      *App
+	viewport viewport.Model
+
+	database string
+	name     string
+
+	describe       ch.TableDescription
+	describeLoaded bool
+
+	columns       []ch.ColumnInfo
+	columnsLoaded bool
+
+	parts       []ch.PartInfo
+	partsLoaded bool
+
+	err error
+
+	tab     detailTab
+	offsets [detailTabCount]int
+	w, h    int
+}
+
+func newTableDetailView(app *App) *TableDetailView {
+	vp := viewport.New(80, 20)
+	return &TableDetailView{app: app, viewport: vp}
+}
+
+func (v *TableDetailView) SetSize(w, h int) {
+	v.w, v.h = w, h
+	if w > 0 {
+		v.viewport.Width = w
+	}
+	// 1 title + 1 tabs + 1 rule = 3 rows of chrome.
+	body := h - 3
+	if body < 3 {
+		body = 3
+	}
+	v.viewport.Height = body
+	v.refresh()
+}
+
+// Target tells the view which table to show. Called from tables_view before
+// switching.
+func (v *TableDetailView) Target(database, table string) {
+	v.database = database
+	v.name = table
+}
+
+func (v *TableDetailView) Init() tea.Cmd {
+	v.describe = ch.TableDescription{}
+	v.describeLoaded = false
+	v.columns = nil
+	v.columnsLoaded = false
+	v.parts = nil
+	v.partsLoaded = false
+	v.err = nil
+	v.tab = tabSchema
+	v.offsets = [detailTabCount]int{}
+	v.refresh()
+	return tea.Batch(v.loadDescribe(), v.loadColumns(), v.loadParts())
+}
+
+func (v *TableDetailView) Update(msg tea.Msg) tea.Cmd {
+	switch m := msg.(type) {
+	case tableDescribeLoadedMsg:
+		v.describe = m.desc
+		v.describeLoaded = true
+		v.err = nil
+		v.refresh()
+		return nil
+	case columnsLoadedMsg:
+		v.columns = m.columns
+		v.columnsLoaded = true
+		v.refresh()
+		return nil
+	case partsLoadedMsg:
+		v.parts = m.parts
+		v.partsLoaded = true
+		v.refresh()
+		return nil
+	case errorMsg:
+		v.err = m.err
+		v.refresh()
+		return nil
+	case tea.KeyMsg:
+		switch m.String() {
+		case "r":
+			return v.Init()
+		case "1":
+			return v.setTab(tabSchema)
+		case "2":
+			return v.setTab(tabParts)
+		case "3":
+			return v.setTab(tabMutations)
+		case "4":
+			return v.setTab(tabEngine)
+		case "tab", "right", "l":
+			return v.setTab(detailTab((int(v.tab) + 1) % detailTabCount))
+		case "shift+tab", "left", "h":
+			return v.setTab(detailTab((int(v.tab) + detailTabCount - 1) % detailTabCount))
+		}
+	}
+	var cmd tea.Cmd
+	v.viewport, cmd = v.viewport.Update(msg)
+	return cmd
+}
+
+func (v *TableDetailView) View() string {
+	title := lipgloss.NewStyle().Bold(true).Foreground(colorPrimary).
+		Render(v.database + "." + v.name)
+	width := v.w
+	if width < 1 {
+		width = 1
+	}
+	rule := lipgloss.NewStyle().Foreground(colorBorder).
+		Render(strings.Repeat("-", width))
+	return title + "\n" + v.renderTabs() + "\n" + rule + "\n" + v.viewport.View() + "\x1b[0m"
+}
+
+func (v *TableDetailView) renderTabs() string {
+	active := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(colorSelFG).
+		Background(colorPrimary).
+		Padding(0, 1)
+	inactive := lipgloss.NewStyle().
+		Foreground(colorMuted).
+		Padding(0, 1)
+	labels := []string{"1 Schema", "2 Parts", "3 Mutations", "4 Engine"}
+	parts := make([]string, len(labels))
+	for i, l := range labels {
+		if detailTab(i) == v.tab {
+			parts[i] = active.Render(l)
+		} else {
+			parts[i] = inactive.Render(l)
+		}
+	}
+	return strings.Join(parts, "")
+}
+
+func (v *TableDetailView) setTab(t detailTab) tea.Cmd {
+	if t == v.tab {
+		return nil
+	}
+	v.offsets[v.tab] = v.viewport.YOffset
+	v.tab = t
+	v.refresh()
+	v.viewport.SetYOffset(v.offsets[v.tab])
+	return tea.ClearScreen
+}
+
+func (v *TableDetailView) refresh() {
+	if v.name == "" {
+		v.viewport.SetContent("\n  no table selected\n")
+		return
+	}
+	if v.err != nil {
+		v.viewport.SetContent("\n  error: " + v.err.Error() + "\n")
+		return
+	}
+	switch v.tab {
+	case tabSchema:
+		v.viewport.SetContent(v.renderSchema())
+	case tabParts:
+		v.viewport.SetContent(v.renderParts())
+	case tabMutations:
+		v.viewport.SetContent(v.renderMutations())
+	case tabEngine:
+		v.viewport.SetContent(v.renderEngine())
+	}
+}
+
+func (v *TableDetailView) renderSchema() string {
+	if !v.columnsLoaded {
+		return "\n  loading columns...\n"
+	}
+	if len(v.columns) == 0 {
+		return "\n  no columns\n"
+	}
+	muted := lipgloss.NewStyle().Foreground(colorMuted)
+	var b strings.Builder
+	header := fmt.Sprintf(
+		"  %-30s %-30s %-25s %-10s %-7s %s",
+		"NAME", "TYPE", "CODEC", "SIZE", "COMPR", "KEYS",
+	)
+	b.WriteString(muted.Render(header) + "\n")
+	for _, c := range v.columns {
+		row := columnRow(c)
+		b.WriteString(fmt.Sprintf(
+			"  %-30s %-30s %-25s %-10s %-7s %s\n",
+			row[0], row[1], row[2], row[3], row[4], row[5],
+		))
+	}
+	return b.String()
+}
+
+func (v *TableDetailView) renderParts() string {
+	if !v.partsLoaded {
+		return "\n  loading parts...\n"
+	}
+	if len(v.parts) == 0 {
+		return "\n  no active parts\n"
+	}
+	muted := lipgloss.NewStyle().Foreground(colorMuted)
+	var b strings.Builder
+	header := fmt.Sprintf(
+		"  %-32s %-14s %-12s %-12s %-7s %-5s %s",
+		"NAME", "PARTITION", "ROWS", "SIZE", "COMPR", "LVL", "MODIFIED",
+	)
+	b.WriteString(muted.Render(header) + "\n")
+	for _, p := range v.parts {
+		row := partRow(p)
+		b.WriteString(fmt.Sprintf(
+			"  %-32s %-14s %-12s %-12s %-7s %-5s %s\n",
+			row[0], row[1], row[2], row[3], row[4], row[5], row[6],
+		))
+	}
+	return b.String()
+}
+
+func (v *TableDetailView) renderMutations() string {
+	muted := lipgloss.NewStyle().Foreground(colorMuted)
+	return "\n  " + muted.Render("mutations view coming next iteration") + "\n"
+}
+
+func (v *TableDetailView) renderEngine() string {
+	if !v.describeLoaded {
+		return "\n  loading engine info...\n"
+	}
+	muted := lipgloss.NewStyle().Foreground(colorMuted)
+	bold := lipgloss.NewStyle().Bold(true).Foreground(colorPrimary)
+	d := v.describe
+
+	row := func(k, val string) string {
+		if val == "" {
+			val = "-"
+		}
+		return "  " + muted.Render(padRight(k+":", 18)) + val + "\n"
+	}
+	var b strings.Builder
+	b.WriteString(row("Engine", d.Engine))
+	b.WriteString(row("Engine full", d.EngineFull))
+	b.WriteString(row("Partition key", d.PartitionKey))
+	b.WriteString(row("Sorting key", d.SortingKey))
+	b.WriteString(row("Primary key", d.PrimaryKey))
+	b.WriteString(row("Sampling key", d.SamplingKey))
+	b.WriteString(row("Storage policy", d.StoragePolicy))
+	b.WriteString(row("Comment", d.Comment))
+	if d.CreateTableQuery != "" {
+		b.WriteString("\n" + bold.Render("  CREATE TABLE") + "\n\n")
+		for _, line := range strings.Split(d.CreateTableQuery, "\n") {
+			b.WriteString("    " + line + "\n")
+		}
+	}
+	return b.String()
+}
+
+func (v *TableDetailView) loadDescribe() tea.Cmd {
+	admin := v.app.client
+	db, t := v.database, v.name
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		d, err := admin.DescribeTable(ctx, db, t)
+		if err != nil {
+			return errorMsg{err: fmt.Errorf("describe %s.%s: %w", db, t, err)}
+		}
+		return tableDescribeLoadedMsg{desc: d}
+	}
+}
+
+func (v *TableDetailView) loadColumns() tea.Cmd {
+	admin := v.app.client
+	db, t := v.database, v.name
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		cs, err := admin.Columns(ctx, db, t)
+		if err != nil {
+			return errorMsg{err: fmt.Errorf("columns %s.%s: %w", db, t, err)}
+		}
+		return columnsLoadedMsg{columns: cs}
+	}
+}
+
+func (v *TableDetailView) loadParts() tea.Cmd {
+	admin := v.app.client
+	db, t := v.database, v.name
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		ps, err := admin.Parts(ctx, db, t)
+		if err != nil {
+			return errorMsg{err: fmt.Errorf("parts %s.%s: %w", db, t, err)}
+		}
+		return partsLoadedMsg{parts: ps}
+	}
+}
+
+// columnRow renders a column's row cells for the schema tab. Pure: same
+// input yields the same output, no clock / RNG dependencies.
+func columnRow(c ch.ColumnInfo) []string {
+	codec := c.CompressionCodec
+	if codec == "" {
+		codec = "default"
+	}
+	ratio := "-"
+	if r := c.CompressionRatio(); r > 0 {
+		ratio = fmt.Sprintf("%.1fx", r)
+	}
+	keys := []string{}
+	if c.IsInPrimaryKey {
+		keys = append(keys, "PK")
+	}
+	if c.IsInPartitionKey {
+		keys = append(keys, "PART")
+	}
+	if c.IsInSortingKey {
+		keys = append(keys, "SORT")
+	}
+	return []string{
+		c.Name,
+		c.Type,
+		codec,
+		humanBytes(int64(c.DataCompressed)),
+		ratio,
+		strings.Join(keys, " "),
+	}
+}
+
+// partRow renders a part's row cells for the parts tab. Pure.
+func partRow(p ch.PartInfo) []string {
+	ratio := "-"
+	if r := p.CompressionRatio(); r > 0 {
+		ratio = fmt.Sprintf("%.1fx", r)
+	}
+	mod := p.ModificationTime.UTC().Format("2006-01-02 15:04:05")
+	return []string{
+		p.Name,
+		p.Partition,
+		humanCount(p.Rows),
+		humanBytes(int64(p.BytesOnDisk)),
+		ratio,
+		fmt.Sprintf("%d", p.Level),
+		mod,
+	}
+}

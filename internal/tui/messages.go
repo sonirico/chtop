@@ -22,6 +22,18 @@ type mergesLoadedMsg struct {
 	merges []ch.MergeInfo
 }
 
+type tableDescribeLoadedMsg struct {
+	desc ch.TableDescription
+}
+
+type columnsLoadedMsg struct {
+	columns []ch.ColumnInfo
+}
+
+type partsLoadedMsg struct {
+	parts []ch.PartInfo
+}
+
 type killDoneMsg struct {
 	queryID string
 	err     error

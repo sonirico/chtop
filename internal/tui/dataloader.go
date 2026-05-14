@@ -15,6 +15,9 @@ type dataLoader interface {
 	KillQuery(ctx context.Context, queryID string) error
 	Replicas(ctx context.Context) ([]ch.ReplicaStatus, error)
 	Merges(ctx context.Context) ([]ch.MergeInfo, error)
+	DescribeTable(ctx context.Context, database, table string) (ch.TableDescription, error)
+	Columns(ctx context.Context, database, table string) ([]ch.ColumnInfo, error)
+	Parts(ctx context.Context, database, table string) ([]ch.PartInfo, error)
 	Ping(ctx context.Context) error
 	Close()
 }
