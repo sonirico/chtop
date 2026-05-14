@@ -1,0 +1,34 @@
+package tui
+
+import "github.com/sonirico/chtop/pkg/ch"
+
+type clustersLoadedMsg struct {
+	clusters []ch.ClusterReplica
+}
+
+type tablesLoadedMsg struct {
+	tables []ch.TableInfo
+}
+
+type processesLoadedMsg struct {
+	procs []ch.Process
+}
+
+type replicasLoadedMsg struct {
+	replicas []ch.ReplicaStatus
+}
+
+type killDoneMsg struct {
+	queryID string
+	err     error
+}
+
+type errorMsg struct {
+	err error
+}
+
+type switchViewMsg struct {
+	view viewID
+}
+
+type tickMsg struct{}

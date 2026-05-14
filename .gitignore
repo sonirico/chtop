@@ -1,0 +1,7 @@
+/bin/
+/chtop
+*.test
+*.out
+.idea/
+.vscode/
+.DS_Store
