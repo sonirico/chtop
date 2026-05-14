@@ -8,17 +8,17 @@ import (
 // ClusterReplica is one row from system.clusters: cluster name, shard,
 // replica, host details and errors counter.
 type ClusterReplica struct {
-	Cluster              string
-	ShardNum             uint32
-	ShardWeight          uint32
-	ReplicaNum           uint32
-	HostName             string
-	HostAddress          string
-	Port                 uint16
-	IsLocal              bool
-	User                 string
-	DefaultDatabase      string
-	ErrorsCount          uint32
+	Cluster               string
+	ShardNum              uint32
+	ShardWeight           uint32
+	ReplicaNum            uint32
+	HostName              string
+	HostAddress           string
+	Port                  uint16
+	IsLocal               bool
+	User                  string
+	DefaultDatabase       string
+	ErrorsCount           uint32
 	EstimatedRecoveryTime uint32
 }
 

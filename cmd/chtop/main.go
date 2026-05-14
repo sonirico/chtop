@@ -87,7 +87,12 @@ func parseFlags() (cliConfig, error) {
 	flag.IntVar(&c.port, "port", c.port, "ClickHouse native port (env: CHTOP_PORT)")
 	flag.StringVar(&c.user, "user", c.user, "ClickHouse user (env: CHTOP_USER)")
 	flag.StringVar(&c.password, "password", c.password, "ClickHouse password (env: CHTOP_PASSWORD)")
-	flag.StringVar(&c.database, "database", c.database, "ClickHouse default database (env: CHTOP_DATABASE)")
+	flag.StringVar(
+		&c.database,
+		"database",
+		c.database,
+		"ClickHouse default database (env: CHTOP_DATABASE)",
+	)
 	flag.BoolVar(&c.tls, "tls", c.tls, "use TLS (default port becomes 9440)")
 	flag.Parse()
 	return c, nil

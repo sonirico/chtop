@@ -183,4 +183,3 @@ func processesToRows(ps []ch.Process) []table.Row {
 	}
 	return rows
 }
-

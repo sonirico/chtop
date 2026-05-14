@@ -9,22 +9,22 @@ import (
 // ReplicaStatus mirrors a row of system.replicas for one replicated table.
 // Use the *Behind fields to spot replicas that are not caught up.
 type ReplicaStatus struct {
-	Database          string
-	Table             string
-	IsLeader          bool
-	IsReadOnly        bool
-	IsSessionExpired  bool
-	FutureParts       uint32
-	PartsToCheck      uint32
-	QueueSize         uint32
-	InsertsInQueue    uint32
-	MergesInQueue     uint32
-	LogMaxIndex       uint64
-	LogPointer        uint64
-	TotalReplicas     uint8
-	ActiveReplicas    uint8
-	AbsoluteDelay     time.Duration
-	LastQueueUpdate   time.Time
+	Database         string
+	Table            string
+	IsLeader         bool
+	IsReadOnly       bool
+	IsSessionExpired bool
+	FutureParts      uint32
+	PartsToCheck     uint32
+	QueueSize        uint32
+	InsertsInQueue   uint32
+	MergesInQueue    uint32
+	LogMaxIndex      uint64
+	LogPointer       uint64
+	TotalReplicas    uint8
+	ActiveReplicas   uint8
+	AbsoluteDelay    time.Duration
+	LastQueueUpdate  time.Time
 }
 
 // Replicas returns one row per replicated table on this replica.
