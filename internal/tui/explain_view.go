@@ -29,13 +29,13 @@ type ExplainView struct {
 	app      *App
 	viewport viewport.Model
 
-	queryID    string
-	queryText  string // displayed in the header for context
-	tab        int
-	cached [explainTabCount]string
-	loaded [explainTabCount]bool
-	err    error
-	w, h   int
+	queryID   string
+	queryText string // displayed in the header for context
+	tab       int
+	cached    [explainTabCount]string
+	loaded    [explainTabCount]bool
+	err       error
+	w, h      int
 }
 
 func newExplainView(app *App) *ExplainView {

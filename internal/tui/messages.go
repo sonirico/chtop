@@ -47,6 +47,10 @@ type explainLoadedMsg struct {
 	body string
 }
 
+type metricsLoadedMsg struct {
+	snapshot ch.MetricsSnapshot
+}
+
 type killDoneMsg struct {
 	queryID string
 	err     error

@@ -22,6 +22,7 @@ const (
 	viewTableDetail
 	viewQueryLog
 	viewExplain
+	viewMetrics
 	viewHelp
 )
 
@@ -52,6 +53,7 @@ type App struct {
 	tableDetail *TableDetailView
 	queryLog    *QueryLogView
 	explain     *ExplainView
+	metrics     *MetricsView
 	help        *HelpView
 
 	cmdMode   bool
@@ -80,6 +82,7 @@ func NewApp(cfg AppConfig) (*App, error) {
 	a.tableDetail = newTableDetailView(a)
 	a.queryLog = newQueryLogView(a)
 	a.explain = newExplainView(a)
+	a.metrics = newMetricsView(a)
 	a.help = newHelpView(a)
 	return a, nil
 }
@@ -127,6 +130,8 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return a, a.queryLog.Update(msg)
 	case viewExplain:
 		return a, a.explain.Update(msg)
+	case viewMetrics:
+		return a, a.metrics.Update(msg)
 	case viewHelp:
 		return a, a.help.Update(msg)
 	}
@@ -150,6 +155,10 @@ func (a *App) View() string {
 		body = a.tableDetail.View()
 	case viewQueryLog:
 		body = a.queryLog.View()
+	case viewExplain:
+		body = a.explain.View()
+	case viewMetrics:
+		body = a.metrics.View()
 	case viewHelp:
 		body = a.help.View()
 	}
@@ -178,6 +187,7 @@ func (a *App) resizeViews() {
 	a.tableDetail.SetSize(w, h)
 	a.queryLog.SetSize(w, h)
 	a.explain.SetSize(w, h)
+	a.metrics.SetSize(w, h)
 	a.help.SetSize(w, h)
 }
 
@@ -208,7 +218,13 @@ func (a *App) handleKey(k tea.KeyMsg) (tea.Cmd, bool) {
 			return a.switchView(a.prev), true
 		case viewExplain:
 			return a.switchView(viewQueryLog), true
-		case viewProcesses, viewClusters, viewReplicas, viewMerges, viewTableDetail, viewQueryLog:
+		case viewProcesses,
+			viewClusters,
+			viewReplicas,
+			viewMerges,
+			viewTableDetail,
+			viewQueryLog,
+			viewMetrics:
 			return a.switchView(viewTables), true
 		}
 	}
@@ -259,6 +275,8 @@ func (a *App) runCommand(cmd string) tea.Cmd {
 		return a.switchView(viewMerges)
 	case "querylog", "ql":
 		return a.switchView(viewQueryLog)
+	case "metrics", "met":
+		return a.switchView(viewMetrics)
 	case "help", "?", "h":
 		return a.toggleHelp()
 	case "quit", "q":
@@ -290,6 +308,8 @@ func (a *App) switchView(v viewID) tea.Cmd {
 		return a.queryLog.Init()
 	case viewExplain:
 		return a.explain.Init()
+	case viewMetrics:
+		return a.metrics.Init()
 	case viewHelp:
 		return a.help.Init()
 	}
@@ -339,6 +359,8 @@ func viewName(v viewID) string {
 		return "query log"
 	case viewExplain:
 		return "explain"
+	case viewMetrics:
+		return "metrics"
 	case viewHelp:
 		return "help"
 	}

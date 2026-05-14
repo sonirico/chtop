@@ -22,6 +22,7 @@ type dataLoader interface {
 	Mutations(ctx context.Context, database, table string) ([]ch.MutationInfo, error)
 	QueryLog(ctx context.Context, since time.Time, limit int) ([]ch.QueryLogInfo, error)
 	ExplainQueryID(ctx context.Context, queryID string, mode ch.ExplainMode) (string, error)
+	Metrics(ctx context.Context) (ch.MetricsSnapshot, error)
 	Ping(ctx context.Context) error
 	Close()
 }
