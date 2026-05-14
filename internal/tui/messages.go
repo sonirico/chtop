@@ -38,6 +38,10 @@ type tableMutationsLoadedMsg struct {
 	mutations []ch.MutationInfo
 }
 
+type queryLogLoadedMsg struct {
+	entries []ch.QueryLogInfo
+}
+
 type killDoneMsg struct {
 	queryID string
 	err     error

@@ -70,6 +70,7 @@ func helpContent() string {
 	b.WriteString(row("clusters, c", "cluster topology"))
 	b.WriteString(row("replicas, R", "replication status"))
 	b.WriteString(row("merges, m", "merges + mutations in flight"))
+	b.WriteString(row("querylog, ql", "recent finished/failed queries"))
 	b.WriteString(row("help, ?", "this help"))
 	b.WriteString(row("quit, q", "quit"))
 

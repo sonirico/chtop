@@ -20,6 +20,7 @@ const (
 	viewReplicas
 	viewMerges
 	viewTableDetail
+	viewQueryLog
 	viewHelp
 )
 
@@ -48,6 +49,7 @@ type App struct {
 	replicas    *ReplicasView
 	merges      *MergesView
 	tableDetail *TableDetailView
+	queryLog    *QueryLogView
 	help        *HelpView
 
 	cmdMode   bool
@@ -74,6 +76,7 @@ func NewApp(cfg AppConfig) (*App, error) {
 	a.replicas = newReplicasView(a)
 	a.merges = newMergesView(a)
 	a.tableDetail = newTableDetailView(a)
+	a.queryLog = newQueryLogView(a)
 	a.help = newHelpView(a)
 	return a, nil
 }
@@ -117,6 +120,8 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return a, a.merges.Update(msg)
 	case viewTableDetail:
 		return a, a.tableDetail.Update(msg)
+	case viewQueryLog:
+		return a, a.queryLog.Update(msg)
 	case viewHelp:
 		return a, a.help.Update(msg)
 	}
@@ -138,6 +143,8 @@ func (a *App) View() string {
 		body = a.merges.View()
 	case viewTableDetail:
 		body = a.tableDetail.View()
+	case viewQueryLog:
+		body = a.queryLog.View()
 	case viewHelp:
 		body = a.help.View()
 	}
@@ -164,6 +171,7 @@ func (a *App) resizeViews() {
 	a.replicas.SetSize(w, h)
 	a.merges.SetSize(w, h)
 	a.tableDetail.SetSize(w, h)
+	a.queryLog.SetSize(w, h)
 	a.help.SetSize(w, h)
 }
 
@@ -192,7 +200,7 @@ func (a *App) handleKey(k tea.KeyMsg) (tea.Cmd, bool) {
 		switch a.current {
 		case viewHelp:
 			return a.switchView(a.prev), true
-		case viewProcesses, viewClusters, viewReplicas, viewMerges, viewTableDetail:
+		case viewProcesses, viewClusters, viewReplicas, viewMerges, viewTableDetail, viewQueryLog:
 			return a.switchView(viewTables), true
 		}
 	}
@@ -241,6 +249,8 @@ func (a *App) runCommand(cmd string) tea.Cmd {
 		return a.switchView(viewReplicas)
 	case "merges", "m":
 		return a.switchView(viewMerges)
+	case "querylog", "ql":
+		return a.switchView(viewQueryLog)
 	case "help", "?", "h":
 		return a.toggleHelp()
 	case "quit", "q":
@@ -268,6 +278,8 @@ func (a *App) switchView(v viewID) tea.Cmd {
 		return a.merges.Init()
 	case viewTableDetail:
 		return a.tableDetail.Init()
+	case viewQueryLog:
+		return a.queryLog.Init()
 	case viewHelp:
 		return a.help.Init()
 	}
@@ -313,6 +325,8 @@ func viewName(v viewID) string {
 		return "merges"
 	case viewTableDetail:
 		return "table"
+	case viewQueryLog:
+		return "query log"
 	case viewHelp:
 		return "help"
 	}

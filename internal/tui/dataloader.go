@@ -2,6 +2,7 @@ package tui
 
 import (
 	"context"
+	"time"
 
 	"github.com/sonirico/chtop/pkg/ch"
 )
@@ -19,6 +20,7 @@ type dataLoader interface {
 	Columns(ctx context.Context, database, table string) ([]ch.ColumnInfo, error)
 	Parts(ctx context.Context, database, table string) ([]ch.PartInfo, error)
 	Mutations(ctx context.Context, database, table string) ([]ch.MutationInfo, error)
+	QueryLog(ctx context.Context, since time.Time, limit int) ([]ch.QueryLogInfo, error)
 	Ping(ctx context.Context) error
 	Close()
 }
