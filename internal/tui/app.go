@@ -21,6 +21,7 @@ const (
 	viewMerges
 	viewTableDetail
 	viewQueryLog
+	viewExplain
 	viewHelp
 )
 
@@ -50,6 +51,7 @@ type App struct {
 	merges      *MergesView
 	tableDetail *TableDetailView
 	queryLog    *QueryLogView
+	explain     *ExplainView
 	help        *HelpView
 
 	cmdMode   bool
@@ -77,6 +79,7 @@ func NewApp(cfg AppConfig) (*App, error) {
 	a.merges = newMergesView(a)
 	a.tableDetail = newTableDetailView(a)
 	a.queryLog = newQueryLogView(a)
+	a.explain = newExplainView(a)
 	a.help = newHelpView(a)
 	return a, nil
 }
@@ -122,6 +125,8 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return a, a.tableDetail.Update(msg)
 	case viewQueryLog:
 		return a, a.queryLog.Update(msg)
+	case viewExplain:
+		return a, a.explain.Update(msg)
 	case viewHelp:
 		return a, a.help.Update(msg)
 	}
@@ -172,6 +177,7 @@ func (a *App) resizeViews() {
 	a.merges.SetSize(w, h)
 	a.tableDetail.SetSize(w, h)
 	a.queryLog.SetSize(w, h)
+	a.explain.SetSize(w, h)
 	a.help.SetSize(w, h)
 }
 
@@ -200,6 +206,8 @@ func (a *App) handleKey(k tea.KeyMsg) (tea.Cmd, bool) {
 		switch a.current {
 		case viewHelp:
 			return a.switchView(a.prev), true
+		case viewExplain:
+			return a.switchView(viewQueryLog), true
 		case viewProcesses, viewClusters, viewReplicas, viewMerges, viewTableDetail, viewQueryLog:
 			return a.switchView(viewTables), true
 		}
@@ -280,6 +288,8 @@ func (a *App) switchView(v viewID) tea.Cmd {
 		return a.tableDetail.Init()
 	case viewQueryLog:
 		return a.queryLog.Init()
+	case viewExplain:
+		return a.explain.Init()
 	case viewHelp:
 		return a.help.Init()
 	}
@@ -327,6 +337,8 @@ func viewName(v viewID) string {
 		return "table"
 	case viewQueryLog:
 		return "query log"
+	case viewExplain:
+		return "explain"
 	case viewHelp:
 		return "help"
 	}

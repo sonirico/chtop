@@ -42,6 +42,11 @@ type queryLogLoadedMsg struct {
 	entries []ch.QueryLogInfo
 }
 
+type explainLoadedMsg struct {
+	tab  int
+	body string
+}
+
 type killDoneMsg struct {
 	queryID string
 	err     error

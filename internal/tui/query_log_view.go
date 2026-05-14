@@ -99,6 +99,17 @@ func (v *QueryLogView) Update(msg tea.Msg) tea.Cmd {
 			v.errored = false
 			return v.load()
 		}
+		if m.String() == "e" || m.String() == "enter" {
+			filtered := v.filtered()
+			idx := v.table.Cursor()
+			if idx >= 0 && idx < len(filtered) {
+				sel := filtered[idx]
+				return func() tea.Msg {
+					v.app.explain.Target(sel.QueryID, sel.Query)
+					return switchViewMsg{view: viewExplain}
+				}
+			}
+		}
 	}
 	var cmd tea.Cmd
 	v.table, cmd = v.table.Update(msg)
