@@ -76,13 +76,29 @@ func helpContent() string {
 	b.WriteString(row("matviews, mv", "materialized view dependency graph"))
 	b.WriteString(row("kafka, k", "Kafka-engine consumers (read / commits / staleness)"))
 	b.WriteString(row("help, ?", "this help"))
-
-	b.WriteString(section("Query log view"))
-	b.WriteString(row("e / enter", "open EXPLAIN for the selected query"))
 	b.WriteString(row("quit, q", "quit"))
+
+	b.WriteString(section("Tables view"))
+	b.WriteString(row("enter", "open table detail (schema / parts / mutations / engine)"))
+
+	b.WriteString(section("Table detail"))
+	b.WriteString(row("1 2 3 4", "schema / parts / mutations / engine tabs"))
+	b.WriteString(row("tab", "next tab"))
+	b.WriteString(row("shift+tab", "previous tab"))
 
 	b.WriteString(section("Processes view"))
 	b.WriteString(row("k", "kill the selected query (asks y/N)"))
+
+	b.WriteString(section("Query log view"))
+	b.WriteString(row("e / enter", "open EXPLAIN for the selected query"))
+	b.WriteString(row("/", "filter by query text / user / db"))
+
+	b.WriteString(section("EXPLAIN view"))
+	b.WriteString(row("1 2 3 4", "plan / pipeline / syntax / estimate tabs"))
+	b.WriteString(row("tab", "next tab"))
+	b.WriteString(row("shift+tab", "previous tab"))
+	b.WriteString(row("r", "re-run the current mode"))
+	b.WriteString(row("esc", "back to query log"))
 
 	return b.String()
 }
