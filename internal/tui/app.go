@@ -25,6 +25,7 @@ const (
 	viewMetrics
 	viewErrors
 	viewMatViews
+	viewKafka
 	viewHelp
 )
 
@@ -58,6 +59,7 @@ type App struct {
 	metrics     *MetricsView
 	errors      *ErrorsView
 	matviews    *MaterializedViewsView
+	kafka       *KafkaConsumersView
 	help        *HelpView
 
 	cmdMode   bool
@@ -89,6 +91,7 @@ func NewApp(cfg AppConfig) (*App, error) {
 	a.metrics = newMetricsView(a)
 	a.errors = newErrorsView(a)
 	a.matviews = newMaterializedViewsView(a)
+	a.kafka = newKafkaConsumersView(a)
 	a.help = newHelpView(a)
 	return a, nil
 }
@@ -142,6 +145,8 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return a, a.errors.Update(msg)
 	case viewMatViews:
 		return a, a.matviews.Update(msg)
+	case viewKafka:
+		return a, a.kafka.Update(msg)
 	case viewHelp:
 		return a, a.help.Update(msg)
 	}
@@ -173,6 +178,8 @@ func (a *App) View() string {
 		body = a.errors.View()
 	case viewMatViews:
 		body = a.matviews.View()
+	case viewKafka:
+		body = a.kafka.View()
 	case viewHelp:
 		body = a.help.View()
 	}
@@ -204,6 +211,7 @@ func (a *App) resizeViews() {
 	a.metrics.SetSize(w, h)
 	a.errors.SetSize(w, h)
 	a.matviews.SetSize(w, h)
+	a.kafka.SetSize(w, h)
 	a.help.SetSize(w, h)
 }
 
@@ -242,7 +250,8 @@ func (a *App) handleKey(k tea.KeyMsg) (tea.Cmd, bool) {
 			viewQueryLog,
 			viewMetrics,
 			viewErrors,
-			viewMatViews:
+			viewMatViews,
+			viewKafka:
 			return a.switchView(viewTables), true
 		}
 	}
@@ -299,6 +308,8 @@ func (a *App) runCommand(cmd string) tea.Cmd {
 		return a.switchView(viewErrors)
 	case "matviews", "mv":
 		return a.switchView(viewMatViews)
+	case "kafka", "k":
+		return a.switchView(viewKafka)
 	case "help", "?", "h":
 		return a.toggleHelp()
 	case "quit", "q":
@@ -336,6 +347,8 @@ func (a *App) switchView(v viewID) tea.Cmd {
 		return a.errors.Init()
 	case viewMatViews:
 		return a.matviews.Init()
+	case viewKafka:
+		return a.kafka.Init()
 	case viewHelp:
 		return a.help.Init()
 	}
@@ -391,6 +404,8 @@ func viewName(v viewID) string {
 		return "errors"
 	case viewMatViews:
 		return "matviews"
+	case viewKafka:
+		return "kafka"
 	case viewHelp:
 		return "help"
 	}

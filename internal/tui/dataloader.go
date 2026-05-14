@@ -25,6 +25,7 @@ type dataLoader interface {
 	Metrics(ctx context.Context) (ch.MetricsSnapshot, error)
 	Errors(ctx context.Context) ([]ch.ErrorInfo, error)
 	MaterializedViews(ctx context.Context) ([]ch.MaterializedViewInfo, error)
+	KafkaConsumers(ctx context.Context) ([]ch.KafkaConsumerInfo, error)
 	Ping(ctx context.Context) error
 	Close()
 }

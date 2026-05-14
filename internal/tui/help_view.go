@@ -74,6 +74,7 @@ func helpContent() string {
 	b.WriteString(row("metrics, met", "live cluster gauges + event rates"))
 	b.WriteString(row("errors, err", "system.errors with growth highlighting"))
 	b.WriteString(row("matviews, mv", "materialized view dependency graph"))
+	b.WriteString(row("kafka, k", "Kafka-engine consumers (read / commits / staleness)"))
 	b.WriteString(row("help, ?", "this help"))
 
 	b.WriteString(section("Query log view"))

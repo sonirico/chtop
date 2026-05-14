@@ -59,6 +59,12 @@ type matviewsLoadedMsg struct {
 	mvs []ch.MaterializedViewInfo
 }
 
+type kafkaConsumersLoadedMsg struct {
+	consumers []ch.KafkaConsumerInfo
+}
+
+type kafkaNotConfiguredMsg struct{}
+
 type killDoneMsg struct {
 	queryID string
 	err     error
