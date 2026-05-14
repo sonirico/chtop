@@ -45,4 +45,8 @@ tidy:
     go mod tidy
 
 clean:
-    rm -rf bin/
+    rm -rf bin/ dist/
+
+# Local goreleaser snapshot to verify the release config without tagging.
+release-snapshot:
+    goreleaser release --snapshot --clean
