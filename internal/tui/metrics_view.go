@@ -176,7 +176,7 @@ func (v *MetricsView) render() {
 		line := fmt.Sprintf(
 			"  %s  %s",
 			muted.Render(padRight(k, 24)),
-			val.Render(padRight(formatMetric(k, curr), 14)),
+			val.Render(padRight(formatMetric(k, int64(curr)), 14)),
 		)
 		if v.prev.SampledAt.IsZero() {
 			line += "  " + muted.Render("(rate next tick)")

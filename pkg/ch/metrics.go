@@ -14,7 +14,10 @@ type MetricsSnapshot struct {
 	SampledAt time.Time
 	Metrics   map[string]int64
 	Async     map[string]float64
-	Events    map[string]int64
+	// Events are cumulative UInt64 counters in system.events; keep them
+	// unsigned so very large values (>2^63 worth of accumulated rows on a
+	// long-lived server) round-trip without loss.
+	Events map[string]uint64
 }
 
 // Metrics returns a single snapshot of the three system tables. Calling this
@@ -25,7 +28,7 @@ func (c *Client) Metrics(ctx context.Context) (MetricsSnapshot, error) {
 		SampledAt: time.Now().UTC(),
 		Metrics:   map[string]int64{},
 		Async:     map[string]float64{},
-		Events:    map[string]int64{},
+		Events:    map[string]uint64{},
 	}
 
 	if err := c.scanInt64Pairs(ctx, &snap.Metrics,
@@ -36,11 +39,30 @@ func (c *Client) Metrics(ctx context.Context) (MetricsSnapshot, error) {
 		`SELECT metric, value FROM system.asynchronous_metrics`); err != nil {
 		return snap, fmt.Errorf("system.asynchronous_metrics: %w", err)
 	}
-	if err := c.scanInt64Pairs(ctx, &snap.Events,
+	if err := c.scanUint64Pairs(ctx, &snap.Events,
 		`SELECT event, value FROM system.events`); err != nil {
 		return snap, fmt.Errorf("system.events: %w", err)
 	}
 	return snap, nil
+}
+
+func (c *Client) scanUint64Pairs(
+	ctx context.Context, dst *map[string]uint64, sql string,
+) error {
+	rows, err := c.conn.Query(c.tagged(ctx), sql)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var name string
+		var value uint64
+		if err := rows.Scan(&name, &value); err != nil {
+			return err
+		}
+		(*dst)[name] = value
+	}
+	return rows.Err()
 }
 
 func (c *Client) scanInt64Pairs(

@@ -44,7 +44,7 @@ func formatMetric(key string, value int64) string {
 // perSecondRate computes the per-second rate between two counter samples.
 // Returns 0 when the elapsed time is zero or negative, or when the counter
 // reset (curr < prev) — typical after a ClickHouse restart.
-func perSecondRate(prev, curr int64, elapsed time.Duration) float64 {
+func perSecondRate(prev, curr uint64, elapsed time.Duration) float64 {
 	if elapsed <= 0 || curr < prev {
 		return 0
 	}

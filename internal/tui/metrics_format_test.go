@@ -11,8 +11,8 @@ func TestPerSecondRate(t *testing.T) {
 	t.Parallel()
 	type testCase struct {
 		name    string
-		prev    int64
-		curr    int64
+		prev    uint64
+		curr    uint64
 		elapsed time.Duration
 		want    float64
 	}
