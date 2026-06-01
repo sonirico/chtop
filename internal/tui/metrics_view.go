@@ -12,12 +12,23 @@ import (
 	"github.com/sonirico/chtop/pkg/ch"
 )
 
-// metricsHistoryLen caps the number of samples kept per metric. At the 2s
-// tick that's ~1 minute of history — enough to spot trend, cheap to keep.
-const metricsHistoryLen = 30
+// metricsHistoryLen caps the number of samples kept per metric. The braille
+// sparkline packs 2 samples per cell and stretches to fill the available
+// width, so the buffer is deep enough to feed a wide column (a ~140-cell
+// sparkline on a wide terminal needs ~280 samples). At the 2s tick that is
+// ~10 minutes of history; the cost is a few floats per series.
+const metricsHistoryLen = 300
 
-// sparkWidth is the rendered width of each metric's sparkline column.
-const sparkWidth = 24
+// metricRow is one rendered line: a label, its current value, an optional
+// trailing field (the per-second rate for events) and the sample history.
+// fmtFn formats the window's max/avg in the same unit as value.
+type metricRow struct {
+	key      string
+	value    string
+	trailing string
+	hist     []float64
+	fmtFn    func(float64) string
+}
 
 // metricsCuratedGauges is the ordered list of system.metrics keys the
 // dashboard highlights.
@@ -189,81 +200,142 @@ func appendCapped(buf []float64, v float64, max int) []float64 {
 	return buf
 }
 
+// metricsTwoColMin is the terminal width at or above which the dashboard
+// splits into two columns. Below it the boxes stack full-width.
+const metricsTwoColMin = 180
+
 func (v *MetricsView) render() {
 	if !v.loaded {
 		return
 	}
-	bold := lipgloss.NewStyle().Bold(true).Foreground(colorPrimary)
-	muted := lipgloss.NewStyle().Foreground(colorMuted)
-	val := lipgloss.NewStyle().Bold(true).Foreground(colorPrimaryHi)
-	rate := lipgloss.NewStyle().Foreground(colorOK)
-	spark := lipgloss.NewStyle().Foreground(colorPrimary)
+	w := v.viewport.Width
+	if w <= 0 {
+		w = 80
+	}
 
-	var b strings.Builder
-
-	b.WriteString(bold.Render("Current gauges") + "\n")
+	var gauges, async, events []metricRow
 	for _, k := range metricsCuratedGauges {
 		cur, ok := v.current.Metrics[k]
 		if !ok {
 			continue
 		}
-		line := metricLine(
-			k, formatMetric(k, cur),
-			sparkline(v.histGauges[k], sparkWidth),
-			muted, val, spark,
-		)
-		b.WriteString(line + "\n")
+		gauges = append(gauges, metricRow{
+			key:   k,
+			value: formatMetric(k, cur),
+			hist:  v.histGauges[k],
+			fmtFn: func(f float64) string { return formatMetric(k, int64(f)) },
+		})
 	}
-	b.WriteString("\n")
-
-	b.WriteString(bold.Render("Async / OS") + "\n")
 	for _, k := range metricsCuratedAsync {
 		fv, ok := v.current.Async[k]
 		if !ok {
 			continue
 		}
-		line := metricLine(
-			k, formatAsync(k, fv),
-			sparkline(v.histAsync[k], sparkWidth),
-			muted, val, spark,
-		)
-		b.WriteString(line + "\n")
+		async = append(async, metricRow{
+			key:   k,
+			value: formatAsync(k, fv),
+			hist:  v.histAsync[k],
+			fmtFn: func(f float64) string { return formatAsync(k, f) },
+		})
 	}
-	b.WriteString("\n")
-
-	b.WriteString(bold.Render("Events") + "\n")
 	for _, k := range metricsCuratedEvents {
 		cur, ok := v.current.Events[k]
 		if !ok {
 			continue
 		}
-		history := v.histEvents[k]
-		rateStr := "(rate next tick)"
-		if !v.prev.SampledAt.IsZero() && len(history) > 0 {
-			rateStr = fmt.Sprintf("%.1f /s", history[len(history)-1])
+		hist := v.histEvents[k]
+		trailing := "(rate next tick)"
+		if !v.prev.SampledAt.IsZero() && len(hist) > 0 {
+			trailing = fmt.Sprintf("%.1f /s", hist[len(hist)-1])
 		}
-		line := fmt.Sprintf(
-			"  %s  %s  %s  %s",
-			muted.Render(padRight(k, 26)),
-			val.Render(padRight(formatMetric(k, int64(cur)), 12)),
-			rate.Render(padRight(rateStr, 14)),
-			spark.Render(sparkline(history, sparkWidth)),
-		)
-		b.WriteString(line + "\n")
+		events = append(events, metricRow{
+			key:      k,
+			value:    formatMetric(k, int64(cur)),
+			trailing: trailing,
+			hist:     hist,
+			fmtFn:    func(f float64) string { return fmt.Sprintf("%.1f", f) },
+		})
 	}
 
-	v.viewport.SetContent(b.String())
+	var out string
+	if w >= metricsTwoColMin {
+		colW := w / 2
+		left := renderMetricBox("Current gauges", gauges, false, colW)
+		right := lipgloss.JoinVertical(lipgloss.Left,
+			renderMetricBox("Async / OS", async, false, w-colW),
+			renderMetricBox("Events", events, true, w-colW),
+		)
+		out = lipgloss.JoinHorizontal(lipgloss.Top, left, right)
+	} else {
+		out = lipgloss.JoinVertical(lipgloss.Left,
+			renderMetricBox("Current gauges", gauges, false, w),
+			renderMetricBox("Async / OS", async, false, w),
+			renderMetricBox("Events", events, true, w),
+		)
+	}
+	v.viewport.SetContent(out)
 }
 
-// metricLine renders one row of the gauges/async sections: label, current
-// value, sparkline. Pure formatting, no I/O.
-func metricLine(key, value, spark string, labelStyle, valStyle, sparkStyle lipgloss.Style) string {
-	return fmt.Sprintf(
-		"  %s  %s  %s",
-		labelStyle.Render(padRight(key, 38)),
-		valStyle.Render(padRight(value, 14)),
-		sparkStyle.Render(spark),
-	)
+// renderMetricBox draws one bordered section spanning outerW columns. The
+// fixed-width label/value/rate/stats columns are reserved first and the
+// sparkline expands to fill whatever horizontal space is left, so the box
+// always reaches the terminal edge.
+func renderMetricBox(title string, rows []metricRow, hasRate bool, outerW int) string {
+	bold := lipgloss.NewStyle().Bold(true).Foreground(colorPrimary)
+	muted := lipgloss.NewStyle().Foreground(colorMuted)
+	valSt := lipgloss.NewStyle().Bold(true).Foreground(colorPrimaryHi)
+	rateSt := lipgloss.NewStyle().Foreground(colorOK)
+	statSt := lipgloss.NewStyle().Foreground(colorMuted)
+
+	const keyW, valW, rateW, statsW = 24, 11, 13, 22
+
+	innerW := outerW - 4 // rounded border (2) + horizontal padding (2)
+	if innerW < 30 {
+		innerW = 30
+	}
+	fixed, gaps := keyW+valW+statsW, 6
+	if hasRate {
+		fixed += rateW
+		gaps = 8
+	}
+	sparkW := innerW - fixed - gaps
+	if sparkW < 6 {
+		sparkW = 6
+	}
+
+	lines := make([]string, 0, len(rows)+1)
+	lines = append(lines, bold.Render(title))
+	for _, r := range rows {
+		parts := []string{
+			muted.Render(padRight(truncate(r.key, keyW), keyW)),
+			valSt.Render(padRight(r.value, valW)),
+		}
+		if hasRate {
+			parts = append(parts, rateSt.Render(padRight(r.trailing, rateW)))
+		}
+		spark := sparklineColored(r.hist, sparkW)
+		// The sparkline only spans as many cells as there are samples; pad it
+		// to the reserved width so the stats column stays aligned and the row
+		// fills the box even before the history buffer is full.
+		if cells := (minInt(len(r.hist), sparkW*2) + 1) / 2; cells < sparkW {
+			spark += strings.Repeat(" ", sparkW-cells)
+		}
+		parts = append(parts, spark)
+		stats := ""
+		if len(r.hist) > 0 {
+			_, mx, avg := seriesStats(r.hist, sparkW*2)
+			stats = fmt.Sprintf("max %s avg %s", r.fmtFn(mx), r.fmtFn(avg))
+		}
+		parts = append(parts, statSt.Render(padRight(truncate(stats, statsW), statsW)))
+		lines = append(lines, strings.Join(parts, "  "))
+	}
+
+	return lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(colorBorder).
+		Padding(0, 1).
+		Width(innerW).
+		Render(strings.Join(lines, "\n"))
 }
 
 // formatAsync renders a float async metric using a small heuristic.

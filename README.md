@@ -29,8 +29,12 @@ for one query and miserable for forty.
 - **EXPLAIN viewer** with PLAN / PIPELINE / SYNTAX / ESTIMATE tabs,
   cached per mode.
 - **Live metrics dashboard** combining `system.metrics`,
-  `system.asynchronous_metrics` and `system.events`. Event counters show
-  a per-second rate against the previous snapshot.
+  `system.asynchronous_metrics` and `system.events`, laid out in
+  full-width boxed sections (two columns on wide terminals). Each metric
+  gets a braille sparkline (2 samples per cell) that stretches to fill the
+  row, coloured by intensity (green -> yellow -> red), plus the max/avg of
+  the window. Event counters show a per-second rate against the previous
+  snapshot.
 - **Errors** (`system.errors`) with growth highlighting: rows whose
   counter increased since the previous snapshot turn red.
 - **Materialized view graph**: each MV rendered as

@@ -20,6 +20,14 @@ var (
 	colorBarBG     = lipgloss.AdaptiveColor{Light: "#E5E7EB", Dark: "#1F1F1F"}
 )
 
+// Sparkline intensity bands: low values stay calm green, mid go yellow, high
+// turn red — the btop-style "this metric is hot" cue.
+var (
+	sparkLow  = lipgloss.NewStyle().Foreground(colorOK)
+	sparkMid  = lipgloss.NewStyle().Foreground(colorPrimary)
+	sparkHigh = lipgloss.NewStyle().Foreground(colorErr)
+)
+
 // Styles holds the lip gloss styles used across the TUI.
 type Styles struct {
 	Header     lipgloss.Style
