@@ -276,10 +276,13 @@ func (v *MetricsView) render() {
 	v.viewport.SetContent(out)
 }
 
-// renderMetricBox draws one bordered section spanning outerW columns. The
-// fixed-width label/value/rate/stats columns are reserved first and the
-// sparkline expands to fill whatever horizontal space is left, so the box
-// always reaches the terminal edge.
+// metricsGraphH is the height in terminal rows of the area graph drawn beneath
+// each metric label.
+const metricsGraphH = 3
+
+// renderMetricBox draws one bordered section spanning outerW columns. Each
+// metric renders as a one-line header (label / value / stats) followed by a
+// full-width area graph, giving a btop-style look.
 func renderMetricBox(title string, rows []metricRow, hasRate bool, outerW int) string {
 	bold := lipgloss.NewStyle().Bold(true).Foreground(colorPrimary)
 	muted := lipgloss.NewStyle().Foreground(colorMuted)
@@ -293,19 +296,11 @@ func renderMetricBox(title string, rows []metricRow, hasRate bool, outerW int) s
 	if innerW < 30 {
 		innerW = 30
 	}
-	fixed, gaps := keyW+valW+statsW, 6
-	if hasRate {
-		fixed += rateW
-		gaps = 8
-	}
-	sparkW := innerW - fixed - gaps
-	if sparkW < 6 {
-		sparkW = 6
-	}
 
-	lines := make([]string, 0, len(rows)+1)
+	lines := make([]string, 0, len(rows)*(metricsGraphH+2)+1)
 	lines = append(lines, bold.Render(title))
-	for _, r := range rows {
+	for i, r := range rows {
+		// Header line: label  value  [rate]  max/avg stats
 		parts := []string{
 			muted.Render(padRight(truncate(r.key, keyW), keyW)),
 			valSt.Render(padRight(r.value, valW)),
@@ -313,21 +308,19 @@ func renderMetricBox(title string, rows []metricRow, hasRate bool, outerW int) s
 		if hasRate {
 			parts = append(parts, rateSt.Render(padRight(r.trailing, rateW)))
 		}
-		spark := sparklineColored(r.hist, sparkW)
-		// The sparkline only spans as many cells as there are samples; pad it
-		// to the reserved width so the stats column stays aligned and the row
-		// fills the box even before the history buffer is full.
-		if cells := (minInt(len(r.hist), sparkW*2) + 1) / 2; cells < sparkW {
-			spark += strings.Repeat(" ", sparkW-cells)
-		}
-		parts = append(parts, spark)
-		stats := ""
 		if len(r.hist) > 0 {
-			_, mx, avg := seriesStats(r.hist, sparkW*2)
-			stats = fmt.Sprintf("max %s avg %s", r.fmtFn(mx), r.fmtFn(avg))
+			_, mx, avg := seriesStats(r.hist, innerW)
+			stats := fmt.Sprintf("max %s avg %s", r.fmtFn(mx), r.fmtFn(avg))
+			parts = append(parts, statSt.Render(truncate(stats, statsW)))
 		}
-		parts = append(parts, statSt.Render(padRight(truncate(stats, statsW), statsW)))
 		lines = append(lines, strings.Join(parts, "  "))
+
+		// Area graph spanning the full inner width.
+		lines = append(lines, areaGraphStyled(r.hist, innerW, metricsGraphH)...)
+
+		if i < len(rows)-1 {
+			lines = append(lines, "")
+		}
 	}
 
 	return lipgloss.NewStyle().

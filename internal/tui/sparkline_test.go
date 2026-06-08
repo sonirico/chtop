@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"strings"
 	"testing"
 	"unicode/utf8"
 
@@ -32,6 +33,54 @@ func TestSparklineColored(t *testing.T) {
 		vals := make([]float64, 100)
 		out := stripANSI(sparklineColored(vals, 4))
 		require.Equal(t, 4, utf8.RuneCountInString(out))
+	})
+}
+
+func TestAreaGraph(t *testing.T) {
+	t.Parallel()
+
+	t.Run("returns h empty rows when no values", func(t *testing.T) {
+		t.Parallel()
+		rows := areaGraph(nil, 10, 3)
+		require.Len(t, rows, 3)
+		for _, r := range rows {
+			require.Equal(t, strings.Repeat(" ", 10), r)
+		}
+	})
+
+	t.Run("returns h rows each w runes wide", func(t *testing.T) {
+		t.Parallel()
+		rows := areaGraph([]float64{1, 2, 3, 4, 5}, 5, 4)
+		require.Len(t, rows, 4)
+		for _, r := range rows {
+			require.Equal(t, 5, utf8.RuneCountInString(r))
+		}
+	})
+
+	t.Run("peak column is fully filled at bottom row", func(t *testing.T) {
+		t.Parallel()
+		// With a single max-value sample the bottom row must be '█' at that column.
+		rows := areaGraph([]float64{1.0}, 1, 2)
+		require.Len(t, rows, 2)
+		// Bottom row (index 1) must contain a full block.
+		require.Equal(t, "█", rows[1])
+	})
+
+	t.Run("zero values produce all spaces", func(t *testing.T) {
+		t.Parallel()
+		rows := areaGraph([]float64{0, 0, 0}, 3, 2)
+		for _, r := range rows {
+			require.Equal(t, strings.Repeat(" ", 3), r)
+		}
+	})
+
+	t.Run("width 0 returns empty rows", func(t *testing.T) {
+		t.Parallel()
+		rows := areaGraph([]float64{1, 2, 3}, 0, 3)
+		require.Len(t, rows, 3)
+		for _, r := range rows {
+			require.Equal(t, "", r)
+		}
 	})
 }
 

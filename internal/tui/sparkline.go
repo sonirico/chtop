@@ -93,6 +93,80 @@ func sparklineColored(values []float64, width int) string {
 	return b.String()
 }
 
+// blockFills maps a sub-row fill height (0..8) to a unicode block char.
+var blockFills = []rune{' ', '▁', '▂', '▃', '▄', '▅', '▆', '▇', '█'}
+
+// areaGraph renders values as a filled area chart h rows tall and w columns wide.
+// Values are normalized against their window max. Returns h rows of text, each
+// w runes wide, using unicode block elements (U+2581..U+2588).
+func areaGraph(values []float64, w, h int) []string {
+	rows := make([]string, h)
+	empty := strings.Repeat(" ", maxInt(w, 0))
+	for i := range rows {
+		rows[i] = empty
+	}
+	if w <= 0 || h <= 0 || len(values) == 0 {
+		return rows
+	}
+	tail := values
+	if len(values) > w {
+		tail = values[len(values)-w:]
+	}
+	var peak float64
+	for _, v := range tail {
+		if v > peak {
+			peak = v
+		}
+	}
+	// colFill[c] is fill in sub-row units (0..h*8).
+	colFill := make([]int, w)
+	offset := w - len(tail)
+	for i, v := range tail {
+		col := offset + i
+		if col < 0 || peak == 0 {
+			continue
+		}
+		f := int(v / peak * float64(h*8))
+		if f > h*8 {
+			f = h * 8
+		}
+		colFill[col] = f
+	}
+	// Build rows top (0) to bottom (h-1).
+	bufs := make([][]rune, h)
+	for r := range bufs {
+		bufs[r] = make([]rune, w)
+		for c := range bufs[r] {
+			bufs[r][c] = ' '
+		}
+	}
+	for col, fill := range colFill {
+		for row := 0; row < h; row++ {
+			tierBot := (h - 1 - row) * 8
+			switch {
+			case fill >= tierBot+8:
+				bufs[row][col] = '█'
+			case fill > tierBot:
+				bufs[row][col] = blockFills[fill-tierBot]
+			}
+		}
+	}
+	for r, buf := range bufs {
+		rows[r] = string(buf)
+	}
+	return rows
+}
+
+// areaGraphStyled renders an area graph and applies colorPrimary to every row.
+func areaGraphStyled(values []float64, w, h int) []string {
+	raw := areaGraph(values, w, h)
+	st := lipgloss.NewStyle().Foreground(colorPrimary)
+	for i, line := range raw {
+		raw[i] = st.Render(line)
+	}
+	return raw
+}
+
 // seriesStats returns the min, max and mean over the trailing `samples` values
 // (the window the sparkline draws). Zero values on an empty slice.
 func seriesStats(values []float64, samples int) (mn, mx, avg float64) {
