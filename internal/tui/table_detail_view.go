@@ -57,13 +57,20 @@ func newTableDetailView(app *App) *TableDetailView {
 	return &TableDetailView{app: app, viewport: vp}
 }
 
+func (v *TableDetailView) Title() string {
+	if v.name == "" {
+		return "Table"
+	}
+	return "Table  " + v.database + "." + v.name
+}
+
 func (v *TableDetailView) SetSize(w, h int) {
 	v.w, v.h = w, h
 	if w > 0 {
 		v.viewport.Width = w
 	}
-	// 1 title + 1 tabs + 1 rule = 3 rows of chrome.
-	body := h - 3
+	// 1 tabs + 1 rule = 2 rows of chrome (the title is in the panel border).
+	body := h - 2
 	if body < 3 {
 		body = 3
 	}
@@ -145,36 +152,9 @@ func (v *TableDetailView) Update(msg tea.Msg) tea.Cmd {
 }
 
 func (v *TableDetailView) View() string {
-	title := lipgloss.NewStyle().Bold(true).Foreground(colorPrimary).
-		Render(v.database + "." + v.name)
-	width := v.w
-	if width < 1 {
-		width = 1
-	}
-	rule := lipgloss.NewStyle().Foreground(colorBorder).
-		Render(strings.Repeat("-", width))
-	return title + "\n" + v.renderTabs() + "\n" + rule + "\n" + v.viewport.View() + "\x1b[0m"
-}
-
-func (v *TableDetailView) renderTabs() string {
-	active := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(colorSelFG).
-		Background(colorPrimary).
-		Padding(0, 1)
-	inactive := lipgloss.NewStyle().
-		Foreground(colorMuted).
-		Padding(0, 1)
-	labels := []string{"1 Schema", "2 Parts", "3 Mutations", "4 Engine"}
-	parts := make([]string, len(labels))
-	for i, l := range labels {
-		if detailTab(i) == v.tab {
-			parts[i] = active.Render(l)
-		} else {
-			parts[i] = inactive.Render(l)
-		}
-	}
-	return strings.Join(parts, "")
+	tabs := renderTabBar(int(v.tab),
+		[]string{"1 Schema", "2 Parts", "3 Mutations", "4 Engine"})
+	return tabs + "\n" + renderRule(maxInt(v.w, 1)) + "\n" + v.viewport.View() + "\x1b[0m"
 }
 
 func (v *TableDetailView) setTab(t detailTab) tea.Cmd {

@@ -69,6 +69,10 @@ func queryLogColumns(width int) []table.Column {
 	}
 }
 
+func (v *QueryLogView) Title() string {
+	return fmt.Sprintf("Query log (%d)", len(v.entries))
+}
+
 func (v *QueryLogView) Init() tea.Cmd {
 	return v.load()
 }
@@ -200,7 +204,3 @@ func oneLineQuery(s string) string {
 	}
 	return strings.TrimSpace(out)
 }
-
-// Make Sprintf import usage explicit; some lint configs flag unused imports
-// even when used transitively through table.Row composition above.
-var _ = fmt.Sprintf

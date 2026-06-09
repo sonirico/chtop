@@ -61,6 +61,10 @@ func replicasColumns(width int) []table.Column {
 	}
 }
 
+func (v *ReplicasView) Title() string {
+	return fmt.Sprintf("Replicas (%d)", len(v.replicas))
+}
+
 func (v *ReplicasView) Init() tea.Cmd {
 	return v.load()
 }

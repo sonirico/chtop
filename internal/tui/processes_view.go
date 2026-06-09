@@ -2,6 +2,7 @@ package tui
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
@@ -63,6 +64,10 @@ func processesColumns(width int) []table.Column {
 		{Title: "READ ROWS", Width: rowsW},
 		{Title: "QUERY", Width: queryW},
 	}
+}
+
+func (v *ProcessesView) Title() string {
+	return fmt.Sprintf("Processes (%d)", len(v.procs))
 }
 
 func (v *ProcessesView) Init() tea.Cmd {

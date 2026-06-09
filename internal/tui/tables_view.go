@@ -65,6 +65,10 @@ func tablesColumns(width int) []table.Column {
 	}
 }
 
+func (v *TablesView) Title() string {
+	return fmt.Sprintf("Tables (%d)", len(v.tables))
+}
+
 func (v *TablesView) Init() tea.Cmd {
 	return v.load()
 }

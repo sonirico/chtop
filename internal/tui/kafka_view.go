@@ -69,6 +69,13 @@ func kafkaColumns(width int) []table.Column {
 	}
 }
 
+func (v *KafkaConsumersView) Title() string {
+	if v.notConfigured {
+		return "Kafka consumers"
+	}
+	return fmt.Sprintf("Kafka consumers (%d)", len(v.consumers))
+}
+
 func (v *KafkaConsumersView) Init() tea.Cmd {
 	return v.load()
 }

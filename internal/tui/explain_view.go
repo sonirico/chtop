@@ -3,7 +3,6 @@ package tui
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/charmbracelet/bubbles/viewport"
@@ -43,13 +42,20 @@ func newExplainView(app *App) *ExplainView {
 	return &ExplainView{app: app, viewport: vp}
 }
 
+func (v *ExplainView) Title() string {
+	if v.queryID == "" {
+		return "Explain"
+	}
+	return "Explain  " + truncate(v.queryID, 40)
+}
+
 func (v *ExplainView) SetSize(w, h int) {
 	v.w, v.h = w, h
 	if w > 0 {
 		v.viewport.Width = w
 	}
-	// 1 title + 1 query preview + 1 tabs + 1 rule = 4 rows.
-	body := h - 4
+	// 1 query preview + 1 tabs + 1 rule = 3 rows (the id is in the panel border).
+	body := h - 3
 	if body < 3 {
 		body = 3
 	}
@@ -111,31 +117,12 @@ func (v *ExplainView) Update(msg tea.Msg) tea.Cmd {
 }
 
 func (v *ExplainView) View() string {
-	bold := lipgloss.NewStyle().Bold(true).Foreground(colorPrimary)
 	muted := lipgloss.NewStyle().Foreground(colorMuted)
-	rule := lipgloss.NewStyle().Foreground(colorBorder).
-		Render(strings.Repeat("-", maxInt(v.w, 1)))
-
-	title := bold.Render("explain "+truncate(v.queryID, 36)) + "  " +
-		muted.Render(oneLineQuery(truncate(v.queryText, 80)))
-	return title + "\n" + v.renderTabs() + "\n" + rule + "\n" +
+	preview := muted.Render(oneLineQuery(truncate(v.queryText, maxInt(v.w-2, 10))))
+	tabs := renderTabBar(v.tab,
+		[]string{"1 Plan", "2 Pipeline", "3 Syntax", "4 Estimate"})
+	return preview + "\n" + tabs + "\n" + renderRule(maxInt(v.w, 1)) + "\n" +
 		v.viewport.View() + "\x1b[0m"
-}
-
-func (v *ExplainView) renderTabs() string {
-	active := lipgloss.NewStyle().Bold(true).
-		Foreground(colorSelFG).Background(colorPrimary).Padding(0, 1)
-	inactive := lipgloss.NewStyle().Foreground(colorMuted).Padding(0, 1)
-	labels := []string{"1 Plan", "2 Pipeline", "3 Syntax", "4 Estimate"}
-	parts := make([]string, len(labels))
-	for i, l := range labels {
-		if i == v.tab {
-			parts[i] = active.Render(l)
-		} else {
-			parts[i] = inactive.Render(l)
-		}
-	}
-	return strings.Join(parts, "")
 }
 
 func (v *ExplainView) setTab(t int) tea.Cmd {

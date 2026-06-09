@@ -154,44 +154,92 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (a *App) View() string {
-	body := ""
-	switch a.current {
-	case viewTables:
-		body = a.tables.View()
-	case viewProcesses:
-		body = a.processes.View()
-	case viewClusters:
-		body = a.clusters.View()
-	case viewReplicas:
-		body = a.replicas.View()
-	case viewMerges:
-		body = a.merges.View()
-	case viewTableDetail:
-		body = a.tableDetail.View()
-	case viewQueryLog:
-		body = a.queryLog.View()
-	case viewExplain:
-		body = a.explain.View()
-	case viewMetrics:
-		body = a.metrics.View()
-	case viewErrors:
-		body = a.errors.View()
-	case viewMatViews:
-		body = a.matviews.View()
-	case viewKafka:
-		body = a.kafka.View()
-	case viewHelp:
-		body = a.help.View()
+	w := a.width
+	if w < 1 {
+		w = 80
 	}
-	if a.height > 0 {
-		body = padToHeight(body, a.bodyHeight())
+	contentW := w - 4
+	region := a.bodyHeight()
+
+	var body string
+	if a.current == viewMetrics {
+		// The metrics dashboard frames its own panels; give it the whole region.
+		body = fitHeight(a.metrics.View(), region)
+	} else {
+		body = panel(a.viewTitle(), fitHeight(a.viewBody(), region-2), contentW)
 	}
-	return lipgloss.JoinVertical(lipgloss.Left,
-		a.renderHeader(), body, a.renderFooter()) + "\x1b[0m"
+
+	header := panel("", a.renderHeader(), contentW)
+	footer := panel("", a.renderFooter(), contentW)
+	return lipgloss.JoinVertical(lipgloss.Left, header, body, footer) + "\x1b[0m"
 }
 
+// viewBody returns the current view's rendered content (unframed).
+func (a *App) viewBody() string {
+	switch a.current {
+	case viewTables:
+		return a.tables.View()
+	case viewProcesses:
+		return a.processes.View()
+	case viewClusters:
+		return a.clusters.View()
+	case viewReplicas:
+		return a.replicas.View()
+	case viewMerges:
+		return a.merges.View()
+	case viewTableDetail:
+		return a.tableDetail.View()
+	case viewQueryLog:
+		return a.queryLog.View()
+	case viewExplain:
+		return a.explain.View()
+	case viewErrors:
+		return a.errors.View()
+	case viewMatViews:
+		return a.matviews.View()
+	case viewKafka:
+		return a.kafka.View()
+	case viewHelp:
+		return a.help.View()
+	}
+	return ""
+}
+
+// viewTitle returns the panel title for the current framed view.
+func (a *App) viewTitle() string {
+	switch a.current {
+	case viewTables:
+		return a.tables.Title()
+	case viewProcesses:
+		return a.processes.Title()
+	case viewClusters:
+		return a.clusters.Title()
+	case viewReplicas:
+		return a.replicas.Title()
+	case viewMerges:
+		return a.merges.Title()
+	case viewTableDetail:
+		return a.tableDetail.Title()
+	case viewQueryLog:
+		return a.queryLog.Title()
+	case viewExplain:
+		return a.explain.Title()
+	case viewErrors:
+		return a.errors.Title()
+	case viewMatViews:
+		return a.matviews.Title()
+	case viewKafka:
+		return a.kafka.Title()
+	case viewHelp:
+		return a.help.Title()
+	}
+	return ""
+}
+
+// bodyHeight is the height of the region between the header and footer boxes,
+// which take 3 rows each (one content line plus top/bottom border).
 func (a *App) bodyHeight() int {
-	h := a.height - 2
+	h := a.height - 6
 	if h < 1 {
 		return 1
 	}
@@ -199,28 +247,23 @@ func (a *App) bodyHeight() int {
 }
 
 func (a *App) resizeViews() {
-	w, h := a.width, a.bodyHeight()
-	a.tables.SetSize(w, h)
-	a.processes.SetSize(w, h)
-	a.clusters.SetSize(w, h)
-	a.replicas.SetSize(w, h)
-	a.merges.SetSize(w, h)
-	a.tableDetail.SetSize(w, h)
-	a.queryLog.SetSize(w, h)
-	a.explain.SetSize(w, h)
-	a.metrics.SetSize(w, h)
-	a.errors.SetSize(w, h)
-	a.matviews.SetSize(w, h)
-	a.kafka.SetSize(w, h)
-	a.help.SetSize(w, h)
-}
-
-func padToHeight(s string, h int) string {
-	lines := strings.Count(s, "\n") + 1
-	if lines >= h {
-		return s
-	}
-	return s + strings.Repeat("\n", h-lines)
+	w, region := a.width, a.bodyHeight()
+	// Framed views render into a panel: content area is w-4 wide, region-2 tall.
+	innerW, innerH := w-4, region-2
+	a.tables.SetSize(innerW, innerH)
+	a.processes.SetSize(innerW, innerH)
+	a.clusters.SetSize(innerW, innerH)
+	a.replicas.SetSize(innerW, innerH)
+	a.merges.SetSize(innerW, innerH)
+	a.tableDetail.SetSize(innerW, innerH)
+	a.queryLog.SetSize(innerW, innerH)
+	a.explain.SetSize(innerW, innerH)
+	a.errors.SetSize(innerW, innerH)
+	a.matviews.SetSize(innerW, innerH)
+	a.kafka.SetSize(innerW, innerH)
+	a.help.SetSize(innerW, innerH)
+	// Metrics frames itself; it gets the whole region.
+	a.metrics.SetSize(w, region)
 }
 
 func (a *App) handleKey(k tea.KeyMsg) (tea.Cmd, bool) {

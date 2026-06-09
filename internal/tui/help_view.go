@@ -29,6 +29,8 @@ func (v *HelpView) SetSize(w, h int) {
 	}
 }
 
+func (v *HelpView) Title() string { return "Help" }
+
 func (v *HelpView) Init() tea.Cmd { return nil }
 
 func (v *HelpView) Update(msg tea.Msg) tea.Cmd {

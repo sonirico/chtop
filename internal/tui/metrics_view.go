@@ -282,9 +282,8 @@ const metricsGraphH = 3
 
 // renderMetricBox draws one bordered section spanning outerW columns. Each
 // metric renders as a one-line header (label / value / stats) followed by a
-// full-width area graph, giving a btop-style look.
+// full-width braille area graph, giving a btop-style look.
 func renderMetricBox(title string, rows []metricRow, hasRate bool, outerW int) string {
-	bold := lipgloss.NewStyle().Bold(true).Foreground(colorPrimary)
 	muted := lipgloss.NewStyle().Foreground(colorMuted)
 	valSt := lipgloss.NewStyle().Bold(true).Foreground(colorPrimaryHi)
 	rateSt := lipgloss.NewStyle().Foreground(colorOK)
@@ -297,8 +296,7 @@ func renderMetricBox(title string, rows []metricRow, hasRate bool, outerW int) s
 		innerW = 30
 	}
 
-	lines := make([]string, 0, len(rows)*(metricsGraphH+2)+1)
-	lines = append(lines, bold.Render(title))
+	lines := make([]string, 0, len(rows)*(metricsGraphH+2))
 	for i, r := range rows {
 		// Header line: label  value  [rate]  max/avg stats
 		parts := []string{
@@ -309,26 +307,21 @@ func renderMetricBox(title string, rows []metricRow, hasRate bool, outerW int) s
 			parts = append(parts, rateSt.Render(padRight(r.trailing, rateW)))
 		}
 		if len(r.hist) > 0 {
-			_, mx, avg := seriesStats(r.hist, innerW)
+			_, mx, avg := seriesStats(r.hist, innerW*2)
 			stats := fmt.Sprintf("max %s avg %s", r.fmtFn(mx), r.fmtFn(avg))
 			parts = append(parts, statSt.Render(truncate(stats, statsW)))
 		}
 		lines = append(lines, strings.Join(parts, "  "))
 
-		// Area graph spanning the full inner width.
-		lines = append(lines, areaGraphStyled(r.hist, innerW, metricsGraphH)...)
+		// Braille area graph spanning the full inner width.
+		lines = append(lines, brailleAreaStyled(r.hist, innerW, metricsGraphH)...)
 
 		if i < len(rows)-1 {
 			lines = append(lines, "")
 		}
 	}
 
-	return lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(colorBorder).
-		Padding(0, 1).
-		Width(innerW).
-		Render(strings.Join(lines, "\n"))
+	return panel(title, strings.Join(lines, "\n"), innerW)
 }
 
 // formatAsync renders a float async metric using a small heuristic.

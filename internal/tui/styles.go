@@ -57,6 +57,10 @@ func tableStyles() table.Styles {
 	s := table.DefaultStyles()
 	s.Header = s.Header.
 		BorderStyle(lipgloss.NormalBorder()).
+		BorderTop(false).
+		BorderLeft(false).
+		BorderRight(false).
+		BorderBottom(true).
 		BorderForeground(colorBorder).
 		Foreground(colorPrimaryHi).
 		Bold(true)

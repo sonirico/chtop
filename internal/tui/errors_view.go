@@ -81,6 +81,10 @@ func errorsColumns(width int) []table.Column {
 	}
 }
 
+func (v *ErrorsView) Title() string {
+	return fmt.Sprintf("Errors (%d)", len(v.current))
+}
+
 func (v *ErrorsView) Init() tea.Cmd {
 	return v.load()
 }

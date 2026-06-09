@@ -38,6 +38,10 @@ func (v *MaterializedViewsView) SetSize(w, h int) {
 	v.render()
 }
 
+func (v *MaterializedViewsView) Title() string {
+	return fmt.Sprintf("Materialized views (%d)", len(v.mvs))
+}
+
 func (v *MaterializedViewsView) Init() tea.Cmd {
 	return v.load()
 }

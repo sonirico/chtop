@@ -68,6 +68,10 @@ func clustersColumns(width int) []table.Column {
 	}
 }
 
+func (v *ClustersView) Title() string {
+	return fmt.Sprintf("Clusters (%d)", len(v.replicas))
+}
+
 func (v *ClustersView) Init() tea.Cmd {
 	return v.load()
 }

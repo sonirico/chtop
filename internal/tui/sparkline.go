@@ -7,7 +7,8 @@ import (
 )
 
 // brailleBase is the Unicode code point of the empty braille cell (U+2800).
-// A braille cell is 2 columns x 4 rows, so two samples pack into one rune.
+// A braille cell is 2 columns x 4 rows, so each cell packs 2 samples wide and
+// 4 levels tall.
 const brailleBase = 0x2800
 
 // brailleLeft / brailleRight map a 0..4 fill height to the dot bits of the
@@ -17,100 +18,24 @@ var (
 	brailleRight = [5]rune{0, 0x80, 0xA0, 0xB0, 0xB8}
 )
 
-// sparklineColored renders the trailing 2*width samples as a braille bar chart
-// coloured by intensity: low values stay green, mid yellow, hot values red.
-// Two samples share one cell (double the horizontal resolution of the block
-// ramp); each cell is coloured by the taller of its two bars. Returns the
-// empty string when there is nothing to plot.
-func sparklineColored(values []float64, width int) string {
-	if width <= 0 || len(values) == 0 {
-		return ""
-	}
-	tail := values
-	if samples := width * 2; len(values) > samples {
-		tail = values[len(values)-samples:]
-	}
-	var max float64
-	for _, v := range tail {
-		if v > max {
-			max = v
-		}
-	}
-	height := func(v float64) int {
-		if max == 0 {
-			return 1 // faint baseline so a flat/empty series still shows
-		}
-		if v < 0 {
-			v = 0
-		}
-		h := int(v/max*4 + 0.5)
-		if h < 0 {
-			h = 0
-		}
-		if h > 4 {
-			h = 4
-		}
-		return h
-	}
-	bands := [3]lipgloss.Style{sparkLow, sparkMid, sparkHigh}
-	bandOf := func(h int) int {
-		switch {
-		case h >= 4:
-			return 2
-		case h >= 3:
-			return 1
-		default:
-			return 0
-		}
-	}
-
-	var b, run strings.Builder
-	curBand := -1
-	flush := func() {
-		if run.Len() == 0 {
-			return
-		}
-		b.WriteString(bands[curBand].Render(run.String()))
-		run.Reset()
-	}
-	for i := 0; i < len(tail); i += 2 {
-		lh := height(tail[i])
-		rh := 0
-		if i+1 < len(tail) {
-			rh = height(tail[i+1])
-		}
-		peak := lh
-		if rh > peak {
-			peak = rh
-		}
-		if band := bandOf(peak); band != curBand {
-			flush()
-			curBand = band
-		}
-		run.WriteRune(rune(brailleBase) | brailleLeft[lh] | brailleRight[rh])
-	}
-	flush()
-	return b.String()
-}
-
-// blockFills maps a sub-row fill height (0..8) to a unicode block char.
-var blockFills = []rune{' ', '▁', '▂', '▃', '▄', '▅', '▆', '▇', '█'}
-
-// areaGraph renders values as a filled area chart h rows tall and w columns wide.
-// Values are normalized against their window max. Returns h rows of text, each
-// w runes wide, using unicode block elements (U+2581..U+2588).
-func areaGraph(values []float64, w, h int) []string {
+// brailleArea renders values as a filled area chart h character-rows tall and
+// w columns wide using braille dots. Each cell is 2 samples wide and 4 dot
+// levels tall, so the chart resolves 2*w samples horizontally and 4*h levels
+// vertically. Values are normalised against the window peak and the most
+// recent samples are anchored to the right edge. Returns h rows, each w runes
+// wide (spaces where empty).
+func brailleArea(values []float64, w, h int) []string {
 	rows := make([]string, h)
-	empty := strings.Repeat(" ", maxInt(w, 0))
+	blank := strings.Repeat(" ", maxInt(w, 0))
 	for i := range rows {
-		rows[i] = empty
+		rows[i] = blank
 	}
 	if w <= 0 || h <= 0 || len(values) == 0 {
 		return rows
 	}
 	tail := values
-	if len(values) > w {
-		tail = values[len(values)-w:]
+	if samples := w * 2; len(values) > samples {
+		tail = values[len(values)-samples:]
 	}
 	var peak float64
 	for _, v := range tail {
@@ -118,57 +43,81 @@ func areaGraph(values []float64, w, h int) []string {
 			peak = v
 		}
 	}
-	// colFill[c] is fill in sub-row units (0..h*8).
-	colFill := make([]int, w)
-	offset := w - len(tail)
-	for i, v := range tail {
-		col := offset + i
-		if col < 0 || peak == 0 {
-			continue
+	total := 4 * h
+	fill := func(v float64) int {
+		if peak == 0 {
+			return 0
 		}
-		f := int(v / peak * float64(h*8))
-		if f > h*8 {
-			f = h * 8
+		if v < 0 {
+			v = 0
 		}
-		colFill[col] = f
+		f := int(v/peak*float64(total) + 0.5)
+		if f > total {
+			f = total
+		}
+		return f
 	}
-	// Build rows top (0) to bottom (h-1).
-	bufs := make([][]rune, h)
-	for r := range bufs {
-		bufs[r] = make([]rune, w)
-		for c := range bufs[r] {
-			bufs[r][c] = ' '
+	cells := (len(tail) + 1) / 2
+	offset := w - cells // right-align so the newest sample hugs the right edge
+	for r := range rows {
+		buf := make([]rune, w)
+		for c := range buf {
+			buf[c] = ' '
 		}
-	}
-	for col, fill := range colFill {
-		for row := 0; row < h; row++ {
-			tierBot := (h - 1 - row) * 8
-			switch {
-			case fill >= tierBot+8:
-				bufs[row][col] = '█'
-			case fill > tierBot:
-				bufs[row][col] = blockFills[fill-tierBot]
+		base := (h - 1 - r) * 4 // dot level at the bottom of this char row
+		for cell := 0; cell < cells; cell++ {
+			lh := clampInt(fill(tail[2*cell])-base, 0, 4)
+			rh := 0
+			if 2*cell+1 < len(tail) {
+				rh = clampInt(fill(tail[2*cell+1])-base, 0, 4)
 			}
+			if lh == 0 && rh == 0 {
+				continue
+			}
+			buf[offset+cell] = rune(brailleBase) | brailleLeft[lh] | brailleRight[rh]
 		}
-	}
-	for r, buf := range bufs {
 		rows[r] = string(buf)
 	}
 	return rows
 }
 
-// areaGraphStyled renders an area graph and applies colorPrimary to every row.
-func areaGraphStyled(values []float64, w, h int) []string {
-	raw := areaGraph(values, w, h)
-	st := lipgloss.NewStyle().Foreground(colorPrimary)
-	for i, line := range raw {
-		raw[i] = st.Render(line)
+// brailleAreaStyled renders a braille area chart with a vertical colour
+// gradient: bottom rows green, middle yellow, top red, so tall spikes read as
+// hot (btop-style).
+func brailleAreaStyled(values []float64, w, h int) []string {
+	raw := brailleArea(values, w, h)
+	for r := range raw {
+		raw[r] = areaRowStyle(r, h).Render(raw[r])
 	}
 	return raw
 }
 
+// areaRowStyle picks the gradient colour for char row r of an h-row graph,
+// where row 0 is the top.
+func areaRowStyle(r, h int) lipgloss.Style {
+	frac := float64(h-1-r) / float64(maxInt(h-1, 1)) // 0 at bottom, 1 at top
+	switch {
+	case frac >= 0.67:
+		return sparkHigh
+	case frac >= 0.34:
+		return sparkMid
+	default:
+		return sparkLow
+	}
+}
+
+func clampInt(v, lo, hi int) int {
+	if v < lo {
+		return lo
+	}
+	if v > hi {
+		return hi
+	}
+	return v
+}
+
 // seriesStats returns the min, max and mean over the trailing `samples` values
-// (the window the sparkline draws). Zero values on an empty slice.
+// (the window the graph draws). Zero values on an empty slice.
 func seriesStats(values []float64, samples int) (mn, mx, avg float64) {
 	tail := values
 	if samples > 0 && len(values) > samples {

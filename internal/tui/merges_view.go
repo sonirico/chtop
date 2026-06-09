@@ -67,6 +67,10 @@ func mergesColumns(width int) []table.Column {
 	}
 }
 
+func (v *MergesView) Title() string {
+	return fmt.Sprintf("Merges (%d)", len(v.merges))
+}
+
 func (v *MergesView) Init() tea.Cmd {
 	return v.load()
 }
